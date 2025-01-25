@@ -1,0 +1,150 @@
+/* styles/globals.css */
+
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body styling */
+body {
+  background-color: #181818;
+  color: #fff;
+  font-family: "Inter", sans-serif;
+  min-height: 100vh;
+}
+
+/* Utility italic */
+.italic {
+  font-style: italic;
+}
+
+/* Container that can hold the entire app */
+.home-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header bar */
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+}
+
+.header-title {
+  font-family: "countach", sans-serif;
+  font-size: 1.8rem;
+  font-weight: bold;
+  display: flex; /* so we can align image + text horizontally */
+  align-items: center;
+  gap: 0.5rem; /* space between the xai logo and "GrokDoc" text */
+  cursor: default;
+}
+
+.header-subtitle {
+  font-family: "countach", sans-serif;
+  font-size: 1.5rem;
+  cursor: default;
+  margin-left: 1rem;
+}
+
+/* Simple horizontal divider under header */
+.header-line {
+  border: none;
+  height: 1px;
+  background-color: #fff;
+  margin: 0;
+}
+
+/* Main section styling */
+.main-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem; /* increased padding */
+  max-width: 1000px;
+  margin: 0 auto;
+  gap: 1.25rem;
+}
+
+/* ========== Card-Style Links ========== */
+.card-container {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1400px;
+  margin-top: 2rem;
+}
+
+.home-card {
+  flex: 1;
+  background-color: #2a2a2a;
+  padding: 2.5rem 2rem; /* Increased vertical padding */
+  border-radius: 6px;
+  text-decoration: none;
+  color: #fff;
+  transition: background-color 0.3s, transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 300px;
+  height: 200px; /* Set explicit height */
+  justify-content: flex-start; /* Align content to top */
+}
+
+.home-card:hover {
+  background-color: #0d8157; /* or a different color on hover */
+  transform: scale(1.02);
+}
+
+.home-card h3 {
+  font-family: "countach", sans-serif;
+  font-size: 1.4rem;
+  margin-bottom: 1.5rem; /* Increased space between title and text */
+  white-space: nowrap;
+}
+
+.home-card p {
+  font-family: "Inter", sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  max-width: 280px; /* Limit text width for better readability */
+}
+
+/* Add responsive behavior for smaller screens */
+@media (max-width: 768px) {
+  .card-container {
+    flex-direction: column;
+  }
+  
+  .home-card {
+    width: 100%;
+  }
+}
+
+/* ========== Button (if you still use it elsewhere) ========== */
+.button {
+  font-family: "countach", sans-serif;
+  background-color: #0d8157;
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.6rem;
+  font-size: 1.2rem;
+  border-radius: 4px;
+  transition: background-color 0.3s, transform 0.2s;
+  cursor: pointer;
+  margin-top: 0.75rem;
+}
+
+.button:hover {
+  background-color: #12a06a;
+  transform: scale(1.05);
+}
