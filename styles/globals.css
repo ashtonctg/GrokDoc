@@ -39,9 +39,9 @@ body {
   font-family: "countach", sans-serif;
   font-size: 1.8rem;
   font-weight: bold;
-  display: flex; /* so we can align image + text horizontally */
+  display: flex; 
   align-items: center;
-  gap: 0.5rem; /* space between the xai logo and "GrokDoc" text */
+  gap: 0.5rem; 
   cursor: default;
 }
 
@@ -68,26 +68,26 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 2rem; /* increased padding */
-  max-width: 1000px;
+  padding: 2rem; 
+  max-width: 1500px;
   margin: 0 auto;
   gap: 1.25rem;
 }
 
-/* ========== Card-Style Links ========== */
+/* ========== Card-Style Link ========== */
 .card-container {
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
   width: 100%;
-  max-width: 1400px;
+  max-width: 1500px;
   margin-top: 2rem;
 }
 
 .home-card {
   flex: 1;
   background-color: #2a2a2a;
-  padding: 2.5rem 2rem; /* Increased vertical padding */
+  padding: 2.5rem 2rem;
   border-radius: 6px;
   text-decoration: none;
   color: #fff;
@@ -96,19 +96,19 @@ body {
   flex-direction: column;
   align-items: center;
   min-width: 300px;
-  height: 200px; /* Set explicit height */
-  justify-content: flex-start; /* Align content to top */
+  height: 200px;
+  justify-content: flex-start;
 }
 
 .home-card:hover {
-  background-color: #0d8157; /* or a different color on hover */
+  background-color: #0d8157;
   transform: scale(1.02);
 }
 
 .home-card h3 {
   font-family: "countach", sans-serif;
   font-size: 1.4rem;
-  margin-bottom: 1.5rem; /* Increased space between title and text */
+  margin-bottom: 1.5rem;
   white-space: nowrap;
 }
 
@@ -116,10 +116,10 @@ body {
   font-family: "Inter", sans-serif;
   font-size: 1rem;
   line-height: 1.5;
-  max-width: 280px; /* Limit text width for better readability */
+  max-width: 280px;
 }
 
-/* Add responsive behavior for smaller screens */
+/* Responsive for smaller screens */
 @media (max-width: 768px) {
   .card-container {
     flex-direction: column;
@@ -130,7 +130,7 @@ body {
   }
 }
 
-/* ========== Button (if you still use it elsewhere) ========== */
+/* Button styling */
 .button {
   font-family: "countach", sans-serif;
   background-color: #0d8157;

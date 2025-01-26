@@ -1,5 +1,5 @@
 // pages/api/symptomChecker.js
-import { symptomCheckerPrompt } from "../../lib/prompts";
+import { systemPrompt } from "../../lib/prompts";
 import { queryO1 } from "../../lib/o1";
 
 export default async function handler(req, res) {
@@ -9,18 +9,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { symptoms } = req.body;
-    console.log("Received symptoms:", symptoms);
-
-    if (!symptoms) {
-      return res.status(400).json({ error: "Symptoms are required" });
+    const { conversation } = req.body;
+    if (!conversation || !Array.isArray(conversation)) {
+      return res.status(400).json({ error: "Invalid conversation array" });
     }
 
-    const messages = symptomCheckerPrompt(symptoms);
-    console.log("Sending messages to O1:", messages);
+    // We'll create an array for the model. Insert a system message if you want strict guidelines:
+    const finalMessages = [
+      systemPrompt(),
+      // user messages or assistant from conversation
+      ...conversation.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
+    ];
 
-    const diagnosis = await queryO1(messages);
-    console.log("Diagnosis from O1:", diagnosis);
+    console.log("SymptomChecker API - finalMessages:", finalMessages);
+
+    const diagnosis = await queryO1(finalMessages);
+    console.log("Diagnosis from O1-mini:", diagnosis);
 
     return res.status(200).json({ diagnosis });
   } catch (error) {
@@ -29,10 +36,9 @@ export default async function handler(req, res) {
       stack: error.stack,
       name: error.name
     });
-    // Return a structured error so you can see it in the browser as well
     return res.status(500).json({
       error: "Failed to analyze symptoms",
-      details: error.message,
+      details: error.message
     });
   }
 }

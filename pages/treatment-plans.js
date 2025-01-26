@@ -1,3 +1,4 @@
+// pages/treatment-plans.js
 import { useState } from "react";
 import Header from "../components/common/Header";
 
@@ -12,15 +13,15 @@ export default function TreatmentPlans() {
     setPlan("");
 
     try {
-      // Placeholder call to an API route
       const res = await fetch("/api/treatmentPlans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goals }),
+        body: JSON.stringify({ userDetails: goals, symptoms: "N/A" }),
       });
       const data = await res.json();
-      setPlan(data.plan || "No treatment plan returned.");
+      setPlan(data.treatmentPlan || "No treatment plan returned.");
     } catch (error) {
+      console.error("Error generating plan:", error);
       setPlan("Error generating plan. Please try again.");
     }
 
@@ -34,19 +35,17 @@ export default function TreatmentPlans() {
       <main className="main-section" style={{ maxWidth: "600px", margin: "0 auto" }}>
         <h2 style={{ marginBottom: "1rem" }}>Personalized Treatment Plans</h2>
         <p style={{ marginBottom: "1rem" }}>
-          Provide any relevant health background, goals, or lifestyle information.
+          Provide any relevant health background or goals to tailor your plan.
         </p>
 
         <form onSubmit={handleGeneratePlan} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <label htmlFor="goalsInput">
-            Your health background & goals:
-          </label>
+          <label htmlFor="goalsInput">Your health background & goals:</label>
           <textarea
             id="goalsInput"
             rows={5}
             value={goals}
             onChange={(e) => setGoals(e.target.value)}
-            placeholder="E.g. I'm looking to eat healthier, lose some weight, and manage stress..."
+            placeholder="E.g. I'm trying to manage stress, lose weight, etc."
             style={{
               padding: "0.8rem",
               borderRadius: "4px",
@@ -59,7 +58,6 @@ export default function TreatmentPlans() {
           />
 
           <button
-            type="submit"
             className="button"
             disabled={loading}
             style={{ alignSelf: "flex-start" }}
