@@ -1,58 +1,107 @@
 // components/symptomChecker/MultiTurnChat.js
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+const TEN_TRIAGE_FIELDS = [
+  "onset", 
+  "severity", 
+  "associatedSymptoms", 
+  "medicalHistory", 
+  "familyHistory", 
+  "meds",
+  "allergies",
+  "lifestyle",
+  "substanceUse",
+  "impactDaily",
+];
+
 export default function MultiTurnChat() {
-  // Start with AI greeting
+  // AI greeting - Initialize messages state first
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Hey, I'm GrokDoc, your AI doctor. How can I help? What are your symptoms?" }
+    {
+      role: "assistant",
+      content: "Hey, I'm GrokDoc, your AI doctor. What are your symptoms?",
+    },
   ]);
+
+  // Add ref for chat container
+  const chatContainerRef = useRef(null);
+
+  // Add scroll to bottom function
+  const scrollToBottom = useCallback(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, []);
+
+  // Add useEffect to scroll on new messages
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
   const [userInput, setUserInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Count user messages to enable plan
-  const userMessageCount = messages.filter(msg => msg.role === "user").length;
-  const canGeneratePlan = userMessageCount >= 5;
+  // Triage state object
+  const [triageState, setTriageState] = useState({
+    onset: null,
+    severity: null,
+    associatedSymptoms: null,
+    medicalHistory: null,
+    familyHistory: null,
+    meds: null,
+    allergies: null,
+    lifestyle: null,
+    substanceUse: null,
+    impactDaily: null,
+  });
 
-  // Insert a "thinking..." bubble
+  // How many triage fields are answered
+  const answeredCount = Object.values(triageState).filter(Boolean).length;
+  // For example, require 6 out of 10
+  const enoughTriage = answeredCount >= 6;
+
+  // Insert "thinking..." bubble
   const addThinkingBubble = (updatedMsgs) => {
     return [...updatedMsgs, { role: "assistant", content: "..." }];
   };
 
-  // Update content in the bubble
+  // Update bubble content
   const updateBubbleContent = (index, newContent) => {
-    setMessages(prev => {
+    setMessages((prev) => {
       const copy = [...prev];
       copy[index] = { ...copy[index], content: newContent };
       return copy;
     });
   };
 
-  const handleVoiceClick = () => {
-    alert("Voice integration placeholder - Realtime API or STT here.");
-  };
-
-  const handleImageClick = () => {
-    alert("Image integration placeholder - choose an image, then pass to AI or vision model.");
-  };
+  // Voice / image placeholders
+  const handleVoiceClick = () => alert("Voice integration placeholder.");
+  const handleImageClick = () => alert("Image integration placeholder.");
 
   // Send user message
   const sendMessage = async () => {
     if (!userInput.trim()) return;
     setLoading(true);
 
+    // Add user message
     const updated = [...messages, { role: "user", content: userInput }];
     setMessages(updated);
+
+    // Attempt to parse triage from user text
+    parseTriageAnswers(userInput);
+
     setUserInput("");
 
-    // Add "thinking..." bubble
+    // "thinking..." bubble
     const thinkingIndex = updated.length;
     const withThinking = addThinkingBubble(updated);
     setMessages(withThinking);
 
     try {
+      // Call symptomChecker
       const res = await fetch("/api/symptomChecker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,12 +120,82 @@ export default function MultiTurnChat() {
     setLoading(false);
   };
 
+  // Press enter to send
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
+
+  // Minimal parse for 10 triage fields
+  function parseTriageAnswers(input) {
+    const lc = input.toLowerCase();
+    let newTriage = { ...triageState };
+
+    // 1) Onset (like "for 3 days" or "started 2 weeks ago")
+    const onsetMatch = lc.match(/(for|started)\s(\d+)\s(day|days|week|weeks|month|months)/);
+    if (onsetMatch && !newTriage.onset) {
+      newTriage.onset = `${onsetMatch[2]} ${onsetMatch[3]}`;
+    }
+
+    // 2) Severity (like "X/10" or "scale X")
+    const severityMatch = lc.match(/(\d)\/10|scale (\d)/);
+    if (severityMatch && !newTriage.severity) {
+      newTriage.severity = parseInt(severityMatch[1] || severityMatch[2], 10);
+    }
+
+    // 3) AssociatedSymptoms (like "I also have a headache and fever")
+    if (!newTriage.associatedSymptoms && lc.includes("also have")) {
+      const after = lc.split("also have")[1];
+      if (after) {
+        newTriage.associatedSymptoms = after.trim().split(".")[0]; // naive parse
+      }
+    }
+
+    // 4) Medical history (like "my medical history includes X")
+    if (!newTriage.medicalHistory && lc.includes("my medical history includes")) {
+      const after = lc.split("my medical history includes")[1];
+      if (after) {
+        newTriage.medicalHistory = after.trim();
+      }
+    }
+
+    // 5) Family history
+    if (!newTriage.familyHistory && lc.includes("in my family")) {
+      newTriage.familyHistory = "Yes";
+    }
+
+    // 6) Meds (like "i take advil" or "i'm on lisinopril")
+    if (!newTriage.meds && (lc.includes("i take") || lc.includes("i'm on"))) {
+      const afterTake = lc.includes("i take") ? lc.split("i take")[1] : lc.split("i'm on")[1];
+      if (afterTake) {
+        newTriage.meds = afterTake.trim().split(" ")[0];
+      }
+    }
+
+    // 7) Allergies
+    if (!newTriage.allergies && lc.includes("allerg") && !lc.includes("no allerg")) {
+      newTriage.allergies = "Yes (unspecified)";
+    }
+
+    // 8) Lifestyle (like "my diet is X", "I do CrossFit", "I exercise daily")
+    if (!newTriage.lifestyle && (lc.includes("my diet") || lc.includes("i exercise"))) {
+      newTriage.lifestyle = "Some lifestyle info provided";
+    }
+
+    // 9) SubstanceUse (like "i smoke" or "i drink")
+    if (!newTriage.substanceUse && (lc.includes("i smoke") || lc.includes("i drink"))) {
+      newTriage.substanceUse = "Yes";
+    }
+
+    // 10) ImpactDaily (like "it affects my work" or "i can't sleep")
+    if (!newTriage.impactDaily && (lc.includes("affects my") || lc.includes("can't sleep"))) {
+      newTriage.impactDaily = "Yes";
+    }
+
+    setTriageState(newTriage);
+  }
 
   return (
     <div
@@ -85,19 +204,21 @@ export default function MultiTurnChat() {
         flexDirection: "column",
         gap: "1rem",
         width: "100%",
-        height: "100vh", // Take full viewport height
-        position: "relative", // Add this for absolute positioning of input area
+        height: "100vh",
+        position: "relative",
       }}
     >
-      {/* Chat area - adjust bottom padding to make room for input */}
+      {/* Chat area - add ref and modify styles */}
       <div
+        ref={chatContainerRef}
         style={{
-          height: "calc(100vh - 180px)", // Adjust height to leave space for input
+          height: "calc(100vh - 180px)",
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
           gap: "1rem",
           paddingBottom: "2rem",
+          scrollBehavior: "smooth", // Add smooth scrolling
         }}
       >
         {messages.map((msg, idx) => {
@@ -126,13 +247,12 @@ export default function MultiTurnChat() {
               {/* Avatar */}
               {!isUser && (
                 <div style={{ marginRight: "0.5rem" }}>
-                  {/* Put AgentIcon in a circular background */}
                   <div
                     style={{
                       width: "36px",
                       height: "36px",
                       borderRadius: "50%",
-                      backgroundColor: "#444", // agent's circle color
+                      backgroundColor: "#444",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -161,14 +281,13 @@ export default function MultiTurnChat() {
                 </div>
               )}
 
-              {/* Bubble */}
               <div style={bubbleStyle}>{msg.content}</div>
             </div>
           );
         })}
       </div>
 
-      {/* Input area - position at bottom */}
+      {/* Bottom Input */}
       <div
         style={{
           position: "fixed",
@@ -176,7 +295,7 @@ export default function MultiTurnChat() {
           left: 0,
           right: 0,
           padding: "1rem",
-          background: "#1a1a1a", // Match your dark theme
+          background: "#1a1a1a",
           borderTop: "1px solid #333",
         }}
       >
@@ -190,8 +309,8 @@ export default function MultiTurnChat() {
             gap: "0.75rem",
           }}
         >
-          {/* Generate Plan button */}
-          {canGeneratePlan && (
+          {/* If enough triage answered, show Generate Plan */}
+          {enoughTriage && (
             <Link href="/treatment-plans" legacyBehavior>
               <a
                 className="button"
@@ -208,13 +327,18 @@ export default function MultiTurnChat() {
             </Link>
           )}
 
-          {/* Input field container */}
+          {/* Textarea + icons + send */}
           <div style={{ position: "relative", width: "100%" }}>
             <textarea
               rows={4}
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
               style={{
                 width: "100%",
                 backgroundColor: "#2a2a2a",
@@ -228,7 +352,7 @@ export default function MultiTurnChat() {
                 outline: "none",
               }}
             />
-            
+
             {/* Icons container */}
             <div
               style={{
@@ -259,7 +383,7 @@ export default function MultiTurnChat() {
               />
             </div>
 
-            {/* Smaller Send button */}
+            {/* Send button */}
             <button
               className="button"
               onClick={sendMessage}

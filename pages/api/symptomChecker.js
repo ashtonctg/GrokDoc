@@ -1,6 +1,6 @@
 // pages/api/symptomChecker.js
 import { systemPrompt } from "../../lib/prompts";
-import { queryO1 } from "../../lib/o1";
+import { queryChatGpt4o } from "../../lib/aimodels";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -10,10 +10,11 @@ export default async function handler(req, res) {
 
   try {
     const { conversation } = req.body;
-    console.log("\n=== API Request ===");
-    console.log("Conversation received:", conversation.length, "messages");
-    console.log("Last message:", conversation[conversation.length - 1]);
+    if (!conversation || !Array.isArray(conversation)) {
+      return res.status(400).json({ error: "Invalid conversation array" });
+    }
 
+    // Insert system prompt
     const finalMessages = [
       systemPrompt(),
       ...conversation.map(msg => ({
@@ -22,24 +23,13 @@ export default async function handler(req, res) {
       }))
     ];
 
-    console.log("\n=== Calling O1 ===");
-    const diagnosis = await queryO1(finalMessages);
-    console.log("\n=== API Response ===");
-    console.log("Diagnosis received:", diagnosis ? "Yes" : "No");
-    
+    const diagnosis = await queryChatGpt4o(finalMessages);
     return res.status(200).json({ diagnosis });
   } catch (error) {
-    console.error("\n=== API Error Details ===");
-    console.error("Name:", error.name);
-    console.error("Message:", error.message);
-    console.error("Stack:", error.stack);
-    if (error.response) {
-      console.error("Response data:", error.response.data);
-    }
-    
+    console.error("SymptomChecker Error:", error);
     return res.status(500).json({
       error: "Failed to analyze symptoms",
-      details: error.message
+      details: error.message,
     });
   }
 }
