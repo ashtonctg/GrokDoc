@@ -60,15 +60,17 @@ export default function MultiTurnChat() {
   const answeredCount = Object.values(triageState).filter(Boolean).length;
   const enoughTriage = answeredCount >= 6;
 
-  // Hidden file input ref
-  const fileInputRef = useRef(null);
+  // Hidden file inputs for image, labs, and emr
+  const imageInputRef = useRef(null);
+  const labsInputRef = useRef(null);
+  const emrInputRef = useRef(null);
 
-  // Insert a "thinking..." bubble
+  // Insert "thinking..." bubble
   const addThinkingBubble = (updatedMsgs) => {
     return [...updatedMsgs, { role: "assistant", content: "..." }];
   };
 
-  // Update content of bubble at index
+  // Update bubble content at index
   const updateBubbleContent = (index, newContent) => {
     setMessages((prev) => {
       const copy = [...prev];
@@ -77,45 +79,91 @@ export default function MultiTurnChat() {
     });
   };
 
-  // Handle voice
-  const handleVoiceClick = () => alert("Voice integration placeholder - Realtime API or STT.");
+  // Voice placeholder
+  const handleVoiceClick = () => alert("Voice integration placeholder.");
 
-  // Handle the image icon click -> triggers hidden file input
+  // Trigger image input
   const handleImageClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+    if (imageInputRef.current) {
+      imageInputRef.current.click();
+    }
+  };
+  // Trigger labs input
+  const handleLabsClick = () => {
+    if (labsInputRef.current) {
+      labsInputRef.current.click();
+    }
+  };
+  // Trigger emr input
+  const handleEmrClick = () => {
+    if (emrInputRef.current) {
+      emrInputRef.current.click();
     }
   };
 
-  // On file select
-  const handleFileChange = async (e) => {
+  // On file select for image
+  const handleImageFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Convert file to base64
     const base64Str = await fileToBase64(file);
-    // Build content array for the user message
     const userMsgContent = [
       { type: "text", text: "Here's an image I'd like to show." },
       {
         type: "image_url",
         image_url: {
           url: `data:${file.type};base64,${base64Str}`,
-          detail: "low", // can also use 'high'
+          detail: "low",
         },
       },
     ];
-
-    // Send message with array content
     sendMessageWithContent(userMsgContent);
   };
 
-  // Utility to convert file -> base64
+  // On file select for labs
+  const handleLabsFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const base64Str = await fileToBase64(file);
+    const userMsgContent = [
+      { type: "text", text: "Here are my labs." },
+      {
+        type: "image_url",
+        image_url: {
+          url: `data:${file.type};base64,${base64Str}`,
+          detail: "doc-labs",
+        },
+      },
+    ];
+    sendMessageWithContent(userMsgContent);
+  };
+
+  // On file select for emr
+  const handleEmrFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const base64Str = await fileToBase64(file);
+    const userMsgContent = [
+      { type: "text", text: "Here's my EMR doc." },
+      {
+        type: "image_url",
+        image_url: {
+          url: `data:${file.type};base64,${base64Str}`,
+          detail: "doc-emr",
+        },
+      },
+    ];
+    sendMessageWithContent(userMsgContent);
+  };
+
+  // Convert file -> base64
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const dataUrl = reader.result; // e.g. "data:image/png;base64,XXX"
+        const dataUrl = reader.result; 
         const base64Part = dataUrl.split("base64,")[1]; 
         resolve(base64Part);
       };
@@ -127,17 +175,15 @@ export default function MultiTurnChat() {
   // Send text-based message
   const sendMessage = () => {
     if (!userInput.trim()) return;
-    // We'll unify everything behind a "sendMessageWithContent" approach
     const textContent = [{ type: "text", text: userInput }];
     sendMessageWithContent(textContent);
     setUserInput("");
   };
 
-  // The main function that calls the API with conversation + new user message
+  // The main function to call the API
   const sendMessageWithContent = async (userMsgContent) => {
     setLoading(true);
 
-    // The user message (role: "user", content: array or string)
     const updated = [...messages, { role: "user", content: userMsgContent }];
     setMessages(updated);
 
@@ -177,7 +223,7 @@ export default function MultiTurnChat() {
     setLoading(false);
   };
 
-  // Press ENTER to send text
+  // Press ENTER
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -185,43 +231,39 @@ export default function MultiTurnChat() {
     }
   };
 
-  // Minimal triage parse (same as your existing logic)
+  // Minimal triage parse
   function parseTriageAnswers(input) {
     const lc = (input || "").toLowerCase();
     let newTriage = { ...triageState };
 
-    // Onset, severity, etc...
-    // (same parse logic as you have)
-
+    // Example parse for onset, severity, ...
+    // (same logic as your code)
     setTriageState(newTriage);
   }
 
-  // Handle severity selection from the scale
+  // Handle severity scale
   const handleSeveritySelect = (value) => {
     setTriageState((prev) => ({ ...prev, severity: value }));
-    // We'll create a user message as though typed
     const severityMsg = `My severity level is ${value}/10.`;
     sendMessageWithContent(severityMsg);
   };
 
-  // Render each message
+  // Renders each message
   const renderMessage = (msg, index) => {
     const isAi = msg.role === "assistant";
+
     // content can be string or array
     let messageElements = null;
-
     if (Array.isArray(msg.content)) {
-      // We have an array of objects (text, image_url, etc.)
       messageElements = msg.content.map((chunk, i) => {
         if (chunk.type === "text") {
           return <span key={i}>{chunk.text}</span>;
         } else if (chunk.type === "image_url") {
           return (
             <div key={i} style={{ marginTop: "0.5rem" }}>
-              {/* Show a small thumbnail or full? */}
               <Image
                 src={chunk.image_url.url}
-                alt="User Provided"
+                alt="User Provided Doc"
                 width={200}
                 height={200}
                 style={{ borderRadius: "6px" }}
@@ -233,7 +275,7 @@ export default function MultiTurnChat() {
         }
       });
     } else {
-      // string content
+      // string
       messageElements = msg.content;
     }
 
@@ -242,6 +284,19 @@ export default function MultiTurnChat() {
     const shouldShowSeverity = isAi && 
       !triageState.severity &&
       (contentStr.includes("1-10") || contentStr.includes("1 to 10"));
+
+    // Update the check for showing labs/emr buttons to be more comprehensive
+    const shouldShowLabsEmr = isAi && (
+      contentStr.includes("medical record") ||
+      contentStr.includes("lab result") ||
+      contentStr.includes("test result") ||
+      contentStr.includes("health record") ||
+      contentStr.includes("previous records") ||
+      contentStr.includes("documentation") ||
+      contentStr.includes("upload") ||
+      contentStr.includes("share your") ||
+      contentStr.includes("do you have any")
+    );
 
     return (
       <div key={index} style={{ display: "flex", flexDirection: "column", marginBottom: "1rem" }}>
@@ -315,6 +370,72 @@ export default function MultiTurnChat() {
             <SeverityScale onSelectSeverity={handleSeveritySelect} />
           </div>
         )}
+
+        {/* Possibly show labs/emr buttons */}
+        {shouldShowLabsEmr && (
+          <div style={{ 
+            marginTop: "1.5rem",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.25rem",
+            margin: "0.5rem 0"
+          }}>
+            <div style={{
+              fontSize: "0.9rem",
+              color: "#999",
+              marginBottom: "0.25rem",
+            }}>
+              Share your medical docs
+            </div>
+            <div style={{
+              display: "flex",
+              gap: "1rem",
+              justifyContent: "center"
+            }}>
+              <button
+                className="button"
+                onClick={handleLabsClick}
+                style={{
+                  backgroundColor: "#444",
+                  color: "#fff",
+                  padding: "1.8rem 1rem",
+                  fontSize: "1.2rem",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  width: "100px",
+                  fontFamily: "countach, sans-serif",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor="#2377E8"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor="#444"; }}
+              >
+                LABS
+              </button>
+              <button
+                className="button"
+                onClick={handleEmrClick}
+                style={{
+                  backgroundColor: "#444",
+                  color: "#fff",
+                  padding: "1.8rem 1rem",
+                  fontSize: "1.2rem",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  width: "100px",
+                  fontFamily: "countach, sans-serif",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor="#2377E8"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor="#444"; }}
+              >
+                EMR
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -345,13 +466,27 @@ export default function MultiTurnChat() {
         {messages.map((msg, idx) => renderMessage(msg, idx))}
       </div>
 
-      {/* Hidden file input for images */}
+      {/* Hidden file inputs */}
       <input
-        ref={fileInputRef}
+        ref={imageInputRef}
         type="file"
         accept="image/*"
         style={{ display: "none" }}
-        onChange={handleFileChange}
+        onChange={handleImageFileChange}
+      />
+      <input
+        ref={labsInputRef}
+        type="file"
+        accept="application/pdf,image/*"
+        style={{ display: "none" }}
+        onChange={handleLabsFileChange}
+      />
+      <input
+        ref={emrInputRef}
+        type="file"
+        accept="application/pdf,image/*"
+        style={{ display: "none" }}
+        onChange={handleEmrFileChange}
       />
 
       <div
