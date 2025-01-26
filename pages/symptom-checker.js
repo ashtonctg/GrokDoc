@@ -9,19 +9,21 @@ export default function SymptomChecker() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setAiResponse("");
+    setAiResponse("Analyzing symptoms...");
 
     try {
-      // Placeholder call to an API route
-      const res = await fetch("/api/symptomChecker", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/symptomChecker', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ symptoms }),
       });
       const data = await res.json();
-      setAiResponse(data.advice || "No response from AI.");
+      setAiResponse(data.diagnosis || "No response from AI.");
     } catch (error) {
-      setAiResponse("Error connecting to the AI. Please try again.");
+      console.error('Error:', error);
+      setAiResponse("Error analyzing symptoms. Please try again.");
     }
 
     setLoading(false);
