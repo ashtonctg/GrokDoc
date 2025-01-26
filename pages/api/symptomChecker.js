@@ -1,4 +1,5 @@
 // pages/api/symptomChecker.js
+
 import { systemPrompt } from "../../lib/prompts";
 import { queryChatGpt4o } from "../../lib/aimodels";
 
@@ -17,12 +18,13 @@ export default async function handler(req, res) {
     // Insert system prompt
     const finalMessages = [
       systemPrompt(),
-      ...conversation.map(msg => ({
+      ...conversation.map((msg) => ({
         role: msg.role,
-        content: msg.content
-      }))
+        content: msg.content, // can be string or array
+      })),
     ];
 
+    // Now we call chatgpt-4o-latest with finalMessages
     const diagnosis = await queryChatGpt4o(finalMessages);
     return res.status(200).json({ diagnosis });
   } catch (error) {
