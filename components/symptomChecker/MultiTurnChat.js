@@ -202,7 +202,7 @@ export default function MultiTurnChat() {
       severity: value
     }));
     // Add a user message with the chosen severity
-    const severityMsg = `My pain level is ${value}/10.`;
+    const severityMsg = `My severity level is ${value}/10.`;
     const updated = [...messages, { role: "user", content: severityMsg }];
     setMessages(updated);
 
