@@ -10,32 +10,33 @@ export default async function handler(req, res) {
 
   try {
     const { conversation } = req.body;
-    if (!conversation || !Array.isArray(conversation)) {
-      return res.status(400).json({ error: "Invalid conversation array" });
-    }
+    console.log("\n=== API Request ===");
+    console.log("Conversation received:", conversation.length, "messages");
+    console.log("Last message:", conversation[conversation.length - 1]);
 
-    // We'll create an array for the model. Insert a system message if you want strict guidelines:
     const finalMessages = [
       systemPrompt(),
-      // user messages or assistant from conversation
       ...conversation.map(msg => ({
         role: msg.role,
         content: msg.content
       }))
     ];
 
-    console.log("SymptomChecker API - finalMessages:", finalMessages);
-
+    console.log("\n=== Calling O1 ===");
     const diagnosis = await queryO1(finalMessages);
-    console.log("Diagnosis from O1-mini:", diagnosis);
-
+    console.log("\n=== API Response ===");
+    console.log("Diagnosis received:", diagnosis ? "Yes" : "No");
+    
     return res.status(200).json({ diagnosis });
   } catch (error) {
-    console.error("API Error Details:", {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
+    console.error("\n=== API Error Details ===");
+    console.error("Name:", error.name);
+    console.error("Message:", error.message);
+    console.error("Stack:", error.stack);
+    if (error.response) {
+      console.error("Response data:", error.response.data);
+    }
+    
     return res.status(500).json({
       error: "Failed to analyze symptoms",
       details: error.message
