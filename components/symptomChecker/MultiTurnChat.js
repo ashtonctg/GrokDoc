@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import SeverityScale from "./SeverityScale";
 
 const TEN_TRIAGE_FIELDS = [
   "onset", 
@@ -36,7 +37,7 @@ export default function MultiTurnChat() {
     }
   }, []);
 
-  // Add useEffect to scroll on new messages
+  // Auto-scroll on new messages
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
@@ -60,15 +61,14 @@ export default function MultiTurnChat() {
 
   // How many triage fields are answered
   const answeredCount = Object.values(triageState).filter(Boolean).length;
-  // For example, require 6 out of 10
   const enoughTriage = answeredCount >= 6;
 
-  // Insert "thinking..." bubble
+  // "thinking..." bubble
   const addThinkingBubble = (updatedMsgs) => {
     return [...updatedMsgs, { role: "assistant", content: "..." }];
   };
 
-  // Update bubble content
+  // Replace bubble content
   const updateBubbleContent = (index, newContent) => {
     setMessages((prev) => {
       const copy = [...prev];
@@ -77,16 +77,14 @@ export default function MultiTurnChat() {
     });
   };
 
-  // Voice / image placeholders
   const handleVoiceClick = () => alert("Voice integration placeholder.");
   const handleImageClick = () => alert("Image integration placeholder.");
 
-  // Send user message
+  // MAIN function to send user text
   const sendMessage = async () => {
     if (!userInput.trim()) return;
     setLoading(true);
 
-    // Add user message
     const updated = [...messages, { role: "user", content: userInput }];
     setMessages(updated);
 
@@ -101,7 +99,6 @@ export default function MultiTurnChat() {
     setMessages(withThinking);
 
     try {
-      // Call symptomChecker
       const res = await fetch("/api/symptomChecker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,10 +114,11 @@ export default function MultiTurnChat() {
       console.error("Error sending message:", error);
       updateBubbleContent(thinkingIndex, "Error: Unable to get a response.");
     }
+
     setLoading(false);
   };
 
-  // Press enter to send
+  // Press ENTER to send
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -133,27 +131,27 @@ export default function MultiTurnChat() {
     const lc = input.toLowerCase();
     let newTriage = { ...triageState };
 
-    // 1) Onset (like "for 3 days" or "started 2 weeks ago")
+    // 1) Onset
     const onsetMatch = lc.match(/(for|started)\s(\d+)\s(day|days|week|weeks|month|months)/);
     if (onsetMatch && !newTriage.onset) {
       newTriage.onset = `${onsetMatch[2]} ${onsetMatch[3]}`;
     }
 
-    // 2) Severity (like "X/10" or "scale X")
+    // 2) Severity
     const severityMatch = lc.match(/(\d)\/10|scale (\d)/);
     if (severityMatch && !newTriage.severity) {
       newTriage.severity = parseInt(severityMatch[1] || severityMatch[2], 10);
     }
 
-    // 3) AssociatedSymptoms (like "I also have a headache and fever")
+    // 3) AssociatedSymptoms
     if (!newTriage.associatedSymptoms && lc.includes("also have")) {
       const after = lc.split("also have")[1];
       if (after) {
-        newTriage.associatedSymptoms = after.trim().split(".")[0]; // naive parse
+        newTriage.associatedSymptoms = after.trim().split(".")[0];
       }
     }
 
-    // 4) Medical history (like "my medical history includes X")
+    // 4) Medical history
     if (!newTriage.medicalHistory && lc.includes("my medical history includes")) {
       const after = lc.split("my medical history includes")[1];
       if (after) {
@@ -166,7 +164,7 @@ export default function MultiTurnChat() {
       newTriage.familyHistory = "Yes";
     }
 
-    // 6) Meds (like "i take advil" or "i'm on lisinopril")
+    // 6) Meds
     if (!newTriage.meds && (lc.includes("i take") || lc.includes("i'm on"))) {
       const afterTake = lc.includes("i take") ? lc.split("i take")[1] : lc.split("i'm on")[1];
       if (afterTake) {
@@ -179,23 +177,157 @@ export default function MultiTurnChat() {
       newTriage.allergies = "Yes (unspecified)";
     }
 
-    // 8) Lifestyle (like "my diet is X", "I do CrossFit", "I exercise daily")
+    // 8) Lifestyle
     if (!newTriage.lifestyle && (lc.includes("my diet") || lc.includes("i exercise"))) {
       newTriage.lifestyle = "Some lifestyle info provided";
     }
 
-    // 9) SubstanceUse (like "i smoke" or "i drink")
+    // 9) SubstanceUse
     if (!newTriage.substanceUse && (lc.includes("i smoke") || lc.includes("i drink"))) {
       newTriage.substanceUse = "Yes";
     }
 
-    // 10) ImpactDaily (like "it affects my work" or "i can't sleep")
+    // 10) ImpactDaily
     if (!newTriage.impactDaily && (lc.includes("affects my") || lc.includes("can't sleep"))) {
       newTriage.impactDaily = "Yes";
     }
 
     setTriageState(newTriage);
   }
+
+  // Handle severity selection from the scale
+  const handleSeveritySelect = (value) => {
+    setTriageState(prev => ({
+      ...prev,
+      severity: value
+    }));
+    // Add a user message with the chosen severity
+    const severityMsg = `My pain level is ${value}/10.`;
+    const updated = [...messages, { role: "user", content: severityMsg }];
+    setMessages(updated);
+
+    // Possibly parse triage again
+    parseTriageAnswers(severityMsg);
+
+    // Attempt another AI response
+    const thinkingIndex = updated.length;
+    const withThinking = addThinkingBubble(updated);
+    setMessages(withThinking);
+
+    // Call the API
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/symptomChecker", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation: updated }),
+        });
+        const data = await res.json();
+        if (data.diagnosis) {
+          updateBubbleContent(thinkingIndex, data.diagnosis);
+        } else {
+          updateBubbleContent(thinkingIndex, "Hmm, no response. Try again?");
+        }
+      } catch (error) {
+        console.error("Error after severity select:", error);
+        updateBubbleContent(thinkingIndex, "Error: Unable to get a response.");
+      }
+      setLoading(false);
+    })();
+  };
+
+  // RENDER each message using a custom function
+  const renderMessage = (msg, index) => {
+    const isAi = (msg.role === "assistant");
+    const contentLower = msg.content.toLowerCase();
+
+    // Check if we show severity scale: 
+    // if the AI says something like "On a scale of 1-10..."
+    const shouldShowSeverity = isAi && 
+      !triageState.severity &&
+      (contentLower.includes("1-10") || contentLower.includes("1 to 10"));
+
+    return (
+      <div key={index} style={{ display: "flex", flexDirection: "column", marginBottom: "1rem" }}>
+        {/* Bubble row */}
+        <div style={{
+          display: "flex",
+          justifyContent: isAi ? "flex-start" : "flex-end",
+          alignItems: "center",
+          padding: "0 1rem",
+        }}>
+          {/* Avatar */}
+          {isAi && (
+            <div style={{ marginRight: "0.5rem" }}>
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  backgroundColor: "#444",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Image
+                  src="/AgentIcon.png"
+                  alt="AI"
+                  width={24}
+                  height={24}
+                  style={{ borderRadius: "50%" }}
+                />
+              </div>
+            </div>
+          )}
+          {!isAi && (
+            <div style={{ marginRight: "0.5rem" }}>
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  backgroundColor: "#666",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontFamily: "countach, sans-serif",
+                  fontSize: "20px",
+                  fontWeight: "bold"
+                }}
+              >
+                ME
+              </div>
+            </div>
+          )}
+
+          {/* Bubble */}
+          <div style={{
+            backgroundColor: isAi ? "#E2E2E2" : "#0d8157",
+            color: isAi ? "#000" : "#fff",
+            padding: "0.75rem 1rem",
+            borderRadius: "6px",
+            maxWidth: "70%",
+            lineHeight: "1.4",
+            fontSize: "1rem",
+            whiteSpace: "pre-wrap",
+          }}>
+            {msg.content}
+          </div>
+        </div>
+
+        {/* Possibly show severity scale below the AI message */}
+        {shouldShowSeverity && (
+          <div style={{ marginTop: "0.5rem", paddingLeft: "52px" }}>
+            {/* We pass handleSeveritySelect so the user picks a number */}
+            <SeverityScale onSelectSeverity={handleSeveritySelect} />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -208,7 +340,7 @@ export default function MultiTurnChat() {
         position: "relative",
       }}
     >
-      {/* Chat area - add ref and modify styles */}
+      {/* Chat area */}
       <div
         ref={chatContainerRef}
         style={{
@@ -218,73 +350,11 @@ export default function MultiTurnChat() {
           flexDirection: "column",
           gap: "1rem",
           paddingBottom: "2rem",
-          scrollBehavior: "smooth", // Add smooth scrolling
+          scrollBehavior: "smooth",
         }}
       >
-        {messages.map((msg, idx) => {
-          const isUser = msg.role === "user";
-          const bubbleStyle = {
-            backgroundColor: isUser ? "#0d8157" : "#E2E2E2",
-            color: isUser ? "#fff" : "#000",
-            padding: "0.9rem",
-            borderRadius: "8px",
-            maxWidth: "70%",
-            lineHeight: "1.4",
-            fontSize: "1rem",
-            whiteSpace: "pre-wrap",
-          };
-
-          return (
-            <div
-              key={idx}
-              style={{
-                display: "flex",
-                justifyContent: isUser ? "flex-end" : "flex-start",
-                alignItems: "center",
-                padding: "0 1rem",
-              }}
-            >
-              {/* Avatar */}
-              {!isUser && (
-                <div style={{ marginRight: "0.5rem" }}>
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "50%",
-                      backgroundColor: "#444",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Image
-                      src="/AgentIcon.png"
-                      alt="AI"
-                      width={24}
-                      height={24}
-                      style={{ borderRadius: "50%" }}
-                    />
-                  </div>
-                </div>
-              )}
-              {isUser && (
-                <div style={{ marginRight: "0.5rem" }}>
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "50%",
-                      backgroundColor: "#666",
-                    }}
-                  />
-                </div>
-              )}
-
-              <div style={bubbleStyle}>{msg.content}</div>
-            </div>
-          );
-        })}
+        {/* Now we call renderMessage for each message */}
+        {messages.map((msg, idx) => renderMessage(msg, idx))}
       </div>
 
       {/* Bottom Input */}
@@ -333,12 +403,7 @@ export default function MultiTurnChat() {
               rows={4}
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
+              onKeyDown={handleKeyDown}
               style={{
                 width: "100%",
                 backgroundColor: "#2a2a2a",
