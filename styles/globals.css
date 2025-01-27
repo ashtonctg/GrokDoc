@@ -161,16 +161,12 @@ input[type="checkbox"] {
   transition: opacity 0.3s, color 0.3s;
 }
 
-@keyframes wiggle {
-  0% { transform: rotate(0deg); }
-  15% { transform: rotate(-5deg); }
-  30% { transform: rotate(5deg); }
-  45% { transform: rotate(-5deg); }
-  60% { transform: rotate(5deg); }
-  75% { transform: rotate(-5deg); }
-  100% { transform: rotate(0deg); }
+@keyframes subtle-bounce {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
 }
 
 .wiggle-once {
-  animation: wiggle 0.8s ease;
+  animation: subtle-bounce 0.7s cubic-bezier(0.28, 0, 0.35, 1);
 } 

@@ -57,17 +57,37 @@ export default function MultiTurnChat() {
   const imageInputRef = useRef(null);
   const labsInputRef = useRef(null);
   const emrInputRef = useRef(null);
+  const inputAreaRef = useRef(null);
+  const [inputAreaHeight, setInputAreaHeight] = useState(0);
 
-  // Scroll to bottom on new messages
-  const scrollToBottom = useCallback(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
+  // Track input area height changes
+  useEffect(() => {
+    if (!inputAreaRef.current) return;
+    
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setInputAreaHeight(entry.borderBoxSize[0].blockSize);
+      }
+    });
+
+    resizeObserver.observe(inputAreaRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
+  // Simplified scroll behavior
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    if (chatContainerRef.current) {
+      const chatContainer = chatContainerRef.current;
+      
+      // Smooth scroll to bottom with a small delay to ensure content is rendered
+      setTimeout(() => {
+        chatContainer.scrollTo({
+          top: chatContainer.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }, [messages, inputAreaHeight]);
 
   // Insert "thinking..." bubble
   const addThinkingBubble = (updatedMsgs) => {
@@ -184,6 +204,23 @@ export default function MultiTurnChat() {
     setUserInput("");
   };
 
+  // Function to process AI's response based on user's previous message
+  function processAiResponse(userMessage, nextQuestion) {
+    const userResponse = userMessage.toLowerCase();
+    
+    // Only hard-code minimal acknowledgments for specific UI interactions
+    if (userResponse.includes("don't have") || 
+        userResponse.includes("no labs") || 
+        userResponse.includes("not right now") ||
+        userResponse.includes("don't them")) {
+      // Let the AI handle the transition naturally
+      return nextQuestion;
+    }
+
+    // For all other responses, let the AI handle it completely
+    return nextQuestion;
+  }
+
   // The main function to call the API
   const sendMessageWithContent = async (userMsgContent) => {
     setLoading(true);
@@ -207,22 +244,30 @@ export default function MultiTurnChat() {
     const withThinking = addThinkingBubble(updated);
     setMessages(withThinking);
 
+    const userMessage = Array.isArray(userMsgContent) 
+      ? userMsgContent.filter(c => c.type === "text").map(c => c.text).join(" ")
+      : userMsgContent;
+
     try {
       const res = await fetch("/api/symptomChecker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation: updated }),
+        body: JSON.stringify({ 
+          conversation: updated,
+          lastUserMessage: userMessage // Pass the user's message for context
+        }),
       });
+      
       const data = await res.json();
       if (data.diagnosis) {
-        const processed = processAiDiagnosis(data.diagnosis);
-        updateBubbleContent(thinkingIndex, processed);
+        // Let the AI handle most of the conversation flow
+        updateBubbleContent(thinkingIndex, data.diagnosis);
       } else {
-        updateBubbleContent(thinkingIndex, "Hmm, no response. Try again?");
+        updateBubbleContent(thinkingIndex, "I apologize, but I'm having trouble understanding. Could you please rephrase that?");
       }
     } catch (error) {
       console.error("Error sending message with content:", error);
-      updateBubbleContent(thinkingIndex, "Error: Unable to get a response.");
+      updateBubbleContent(thinkingIndex, "I apologize, but I'm having technical difficulties. Could we try that again?");
     }
 
     setLoading(false);
@@ -279,6 +324,46 @@ export default function MultiTurnChat() {
   // Renders each message bubble
   const renderMessage = (msg, index) => {
     const isAi = msg.role === "assistant";
+    const content = Array.isArray(msg.content) ? msg.content[0].text : msg.content;
+    
+    // Don't show for the initial greeting
+    const isInitialGreeting = content.includes("Hey, I'm GrokDoc") || 
+                             content.includes("What are your symptoms");
+
+    // More comprehensive trigger conditions for LABS/EMR
+    const shouldShowLabsEmr = isAi && 
+      !isInitialGreeting && (
+      // Medical history related
+      content.toLowerCase().includes('medical history') ||
+      content.toLowerCase().includes('previous') ||
+      content.toLowerCase().includes('prior') ||
+      
+      // Test results related
+      content.toLowerCase().includes('test results') ||
+      content.toLowerCase().includes('lab') ||
+      content.toLowerCase().includes('blood work') ||
+      
+      // Documentation related
+      content.toLowerCase().includes('medical records') ||
+      content.toLowerCase().includes('documentation') ||
+      
+      // Treatment related
+      content.toLowerCase().includes('diagnosed') ||
+      content.toLowerCase().includes('treatment') ||
+      content.toLowerCase().includes('specialist') ||
+      
+      // Specific medical context
+      content.toLowerCase().includes('chronic') ||
+      (content.toLowerCase().includes('have you') && 
+       content.toLowerCase().includes('seen'))
+    );
+
+    // Animation state handling
+    let labsEmrClass = "";
+    if (shouldShowLabsEmr && !didAnimateLabsEmr) {
+      labsEmrClass = "wiggle-once";
+      setDidAnimateLabsEmr(true);
+    }
 
     let messageElements = null;
     if (Array.isArray(msg.content)) {
@@ -306,23 +391,19 @@ export default function MultiTurnChat() {
     }
 
     // Check if we should show severity scale
-    const contentStr = typeof msg.content === "string" ? msg.content.toLowerCase() : "";
-    const shouldShowSeverity = isAi && !triageState.severity && (contentStr.includes("1-10") || contentStr.includes("1 to 10"));
-    // Check if we should show labs/emr
-    const shouldShowLabsEmr = isAi && (contentStr.includes("medical record") || contentStr.includes("lab result") || contentStr.includes("test result") || contentStr.includes("health record") || contentStr.includes("upload") || contentStr.includes("do you have any"));
+    const shouldShowSeverity = isAi && (
+      content.toLowerCase().includes("scale of 1 to 10") || 
+      content.toLowerCase().includes("scale of 1-10") ||
+      content.toLowerCase().includes("how severe") ||
+      (content.toLowerCase().includes("pain") && 
+       content.toLowerCase().includes("intense"))
+    );
     
-    // *** For one-time button animation
+    // Animation state handling
     let severityScaleClass = "";
     if (shouldShowSeverity && !didAnimateSeverity) {
-      severityScaleClass = "wiggle-once"; // We'll define CSS
-      // Mark that we've animated once
+      severityScaleClass = "wiggle-once";
       setDidAnimateSeverity(true);
-    }
-
-    let labsEmrClass = "";
-    if (shouldShowLabsEmr && !didAnimateLabsEmr) {
-      labsEmrClass = "wiggle-once";
-      setDidAnimateLabsEmr(true);
     }
 
     return (
@@ -391,7 +472,7 @@ export default function MultiTurnChat() {
           </div>
         </div>
 
-        {/* Possibly show severity scale */}
+        {/* Severity scale */}
         {shouldShowSeverity && (
           <div style={{ marginTop: "0.5rem", paddingLeft: "52px" }}>
             <div className={severityScaleClass}>
@@ -415,7 +496,7 @@ export default function MultiTurnChat() {
               color: "#999",
               marginBottom: "0.25rem",
             }}>
-              Share your medical docs
+              Click to share your medical docs
             </div>
             <div style={{
               display: "flex",
@@ -480,24 +561,34 @@ export default function MultiTurnChat() {
     <div style={{
       display: "flex",
       flexDirection: "column",
-      gap: "1rem",
       width: "100%",
       height: "100vh",
       position: "relative",
+      overflow: "hidden"
     }}>
+      {/* Chat messages container */}
       <div
         ref={chatContainerRef}
         style={{
-          height: "calc(100vh - 180px)",
+          flex: 1,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
-          gap: "1rem",
-          paddingBottom: "2rem",
-          scrollBehavior: "smooth",
+          paddingTop: "60px",
+          paddingBottom: "20px", // Small padding at bottom
+          marginBottom: `${inputAreaHeight}px`,
+          scrollBehavior: "smooth", // Ensure all scrolling is smooth
         }}
       >
-        {messages.map((msg, idx) => renderMessage(msg, idx))}
+        <div style={{
+          flex: 1,
+          minHeight: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end", // Ensures messages start from bottom when few messages
+        }}>
+          {messages.map((msg, idx) => renderMessage(msg, idx))}
+        </div>
       </div>
 
       {/* Hidden file inputs */}
@@ -523,29 +614,29 @@ export default function MultiTurnChat() {
         onChange={handleEmrFileChange}
       />
 
-      {/* Chat input area + Plan button */}
+      {/* Input area */}
       <div
+        ref={inputAreaRef}
         style={{
           position: "fixed",
           bottom: 0,
           left: 0,
           right: 0,
-          padding: "1rem",
           background: "#1a1a1a",
           borderTop: "1px solid #333",
+          zIndex: 1000,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            maxWidth: "500px",
-            margin: "0 auto",
-            gap: "0.75rem",
-          }}
-        >
-          {/* The Plan Button + Progress section */}
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          maxWidth: "500px",
+          margin: "0 auto",
+          padding: "1rem",
+          gap: "0.75rem",
+        }}>
+          {/* Plan Button + Progress section */}
           <div style={{
             display: "flex",
             flexDirection: "column",
@@ -558,7 +649,6 @@ export default function MultiTurnChat() {
               style={{
                 backgroundColor: enoughTriage ? "#0d8157" : "#666",
                 cursor: enoughTriage ? "pointer" : "not-allowed",
-                textDecoration: "none",
                 padding: "0.6rem 1.2rem",
                 fontSize: "1.1rem",
                 borderRadius: "4px",
@@ -576,7 +666,6 @@ export default function MultiTurnChat() {
               <div style={{
                 fontSize: "0.8rem",
                 color: "#666",
-                marginTop: "-0.2rem"
               }}>
                 {4 - answeredCount} more questions
               </div>

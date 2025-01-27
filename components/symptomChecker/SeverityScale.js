@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const SEVERITY_COLORS = [
-  "#00b300",
-  "#4cc200",
-  "#86cc00",
-  "#c2d100",
+  "#0d8157",
+  "#12916a",
+  "#17a17d",
   "#d4b100",
-  "#d48600",
-  "#d15c00",
+  "#d49600",
+  "#d47b00",
+  "#d46100",
   "#cc3300",
   "#c20000",
   "#b30000"
@@ -16,7 +16,6 @@ const SEVERITY_COLORS = [
 function SeverityBox({ number, color, selected, onSelect }) {
   return (
     <div
-      className="severity-box"
       onClick={() => onSelect(number)}
       style={{
         width: "35px",
@@ -50,6 +49,12 @@ function SeverityBox({ number, color, selected, onSelect }) {
 
 export default function SeverityScale({ onSelectSeverity }) {
   const [selectedValue, setSelectedValue] = useState(null);
+  const [shouldAnimate, setShouldAnimate] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShouldAnimate(false), 700);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSelect = (value) => {
     setSelectedValue(value);
@@ -69,9 +74,9 @@ export default function SeverityScale({ onSelectSeverity }) {
         color: "#999",
         marginBottom: "0.25rem",
       }}>
-        Select severity (1 = mild, 10 = severe)
+        Click to select severity (1 = mild, 10 = severe)
       </div>
-      <div style={{
+      <div className={shouldAnimate ? "wiggle-once" : ""} style={{
         display: "flex",
         gap: "0.2rem",
         justifyContent: "center",
