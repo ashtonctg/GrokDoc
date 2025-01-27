@@ -167,6 +167,12 @@ input[type="checkbox"] {
   100% { transform: translateY(0); }
 }
 
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
 .wiggle-once {
   animation: subtle-bounce 0.7s cubic-bezier(0.28, 0, 0.35, 1);
 } 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import Header from "../components/common/Header";
 import DayCards from "../components/plan/DayCards";
 import ProgressBar from "../components/plan/ProgressBar";
+import Image from "next/image";
 
 export default function PlanPage() {
   // State
@@ -21,11 +22,21 @@ export default function PlanPage() {
     const isDebug = urlParams.get("debug") === "1";
     
     if (isDebug) {
+      console.log("[DEBUG] PlanPage - Using mock data");
       const mockTasks = generateMockTasks();
       setPlanTasks(mockTasks);
       setLoading(false);
     } else {
-      fetchPlanFromServer();
+      console.log("[DEBUG] PlanPage - Fetching real plan");
+      const planData = JSON.parse(localStorage.getItem('planContext'));
+      console.log("[DEBUG] PlanPage - Plan data from storage:", planData);
+      
+      if (planData) {
+        fetchPlanFromServer(planData);
+      } else {
+        console.log("[DEBUG] PlanPage - No plan data found in storage");
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -57,18 +68,20 @@ export default function PlanPage() {
     return tasks;
   }
 
-  async function fetchPlanFromServer() {
+  async function fetchPlanFromServer(planData) {
     setLoading(true);
     try {
+      console.log("[DEBUG] PlanPage - Calling API with:", planData);
       const res = await fetch("/api/generatePlan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ symptoms: userSymptoms }),
+        body: JSON.stringify(planData)
       });
       const data = await res.json();
+      console.log("[DEBUG] PlanPage - API Response:", data);
       setPlanTasks(data.tasks || []);
     } catch (err) {
-      console.error("Error fetching plan:", err);
+      console.error("[DEBUG] PlanPage - Error:", err);
     }
     setLoading(false);
   }
@@ -122,41 +135,48 @@ export default function PlanPage() {
       <hr className="header-line" />
 
       <div style={{
-        padding: "1rem 1.5rem 0.5rem 1.5rem",
+        padding: "4rem 1.5rem 0.5rem 1.5rem",
         display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
+        flexDirection: "column",
+        gap: "1rem"
       }}>
-        <h1 style={{
-          fontFamily: "countach, sans-serif",
-          fontSize: "1.8rem",
-          margin: 0,
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
         }}>
-          Your Personalized Plan
-        </h1>
-        <Link href="/symptom-checker" legacyBehavior>
-          <a style={{
-            display: "inline-flex",
-            alignItems: "center",
-            cursor: "pointer"
+          <h1 style={{
+            fontFamily: "countach, sans-serif",
+            fontSize: "1.8rem",
+            margin: 0,
           }}>
-            <img
-              src="/Chat.png"
-              alt="Chat"
-              style={{ width: "40px", height: "40px" }}
-            />
-          </a>
-        </Link>
-      </div>
+            Your Personalized Plan
+          </h1>
+          <Link href="/symptom-checker" legacyBehavior>
+            <a style={{
+              display: "inline-flex",
+              alignItems: "center",
+              cursor: "pointer",
+              marginTop: "0.5rem"
+            }}>
+              <Image
+                src="/Chat.png"
+                alt="Chat"
+                width={40}
+                height={40}
+              />
+            </a>
+          </Link>
+        </div>
 
-      <div style={{
-        margin: "0 1.5rem",
-        color: "#ccc",
-        fontSize: "1rem",
-        marginBottom: "2.5rem",
-      }}>
-        Here's your 7-day plan to help you manage symptoms. Check off tasks as
-        you complete them. If something changes, update GrokDoc below.
+        <div style={{
+          color: "#ccc",
+          fontSize: "1rem",
+          marginBottom: "2rem",
+        }}>
+          Here's your 7-day plan to help you manage symptoms. Check off tasks as
+          you complete them. If something changes, update GrokDoc below.
+        </div>
       </div>
 
       <div style={{
@@ -167,34 +187,56 @@ export default function PlanPage() {
         alignItems: "center",
         gap: "2.5rem",
       }}>
-        {loading && (
-          <div style={{ padding: "1rem 0", fontSize: "1rem", color: "#fff" }}>
-            Loading your plan...
+        {loading ? (
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1rem",
+            marginTop: "2rem"
+          }}>
+            <h2 style={{
+              fontFamily: "countach, sans-serif",
+              fontSize: "1.8rem",
+              margin: 0,
+              color: "#fff"
+            }}>
+              Making Plan
+            </h2>
+            <div style={{
+              fontSize: "2.5rem",
+              color: "#fff",
+              animation: "pulse 1.5s ease-in-out infinite",
+              letterSpacing: "0.5rem",
+              marginTop: "0.5rem",
+              paddingLeft: "0.5rem"
+            }}>
+              • • •
+            </div>
           </div>
+        ) : (
+          <>
+            <DayCards
+              tasks={planTasks}
+              onToggleTask={handleToggleTask}
+              currentDay={0}
+            />
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              width: "100%",
+              maxWidth: "600px",
+              padding: "0 1.5rem",
+              marginTop: "-1rem",
+            }}>
+              <ProgressBar fraction={completionRatio} />
+              <div style={{ marginTop: "0.5rem", color: "#999", fontSize: "0.9rem" }}>
+                {doneTasks}/{totalTasks} tasks completed
+              </div>
+            </div>
+          </>
         )}
-
-        {!loading && (
-          <DayCards
-            tasks={planTasks}
-            onToggleTask={handleToggleTask}
-            currentDay={0}
-          />
-        )}
-
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          width: "100%",
-          maxWidth: "600px",
-          padding: "0 1.5rem",
-          marginTop: "-1rem",
-        }}>
-          <ProgressBar fraction={completionRatio} />
-          <div style={{ marginTop: "0.5rem", color: "#999", fontSize: "0.9rem" }}>
-            {doneTasks}/{totalTasks} tasks completed
-          </div>
-        </div>
 
         <div style={{
           position: "fixed",

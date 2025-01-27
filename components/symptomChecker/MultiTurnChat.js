@@ -95,16 +95,14 @@ export default function MultiTurnChat() {
     }
   }, [messages, inputAreaHeight]);
 
-  // Proactively offer a diagnosis after all 4 critical fields are in
+  // When we have enough info, offer the plan more naturally
   useEffect(() => {
     if (!diagnosisOffered && enoughTriage) {
-      // Append an assistant message offering a diagnosis
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content:
-            "I now have enough info to try a diagnosis. Would you like me to attempt one?",
+          content: "I have a good understanding of your situation now. Would you like me to create a personalized 7-day plan to help manage your symptoms?"
         },
       ]);
       setDiagnosisOffered(true);
@@ -152,35 +150,71 @@ export default function MultiTurnChat() {
     
     const aiQ = aiQuestion.toLowerCase();
 
-    if (aiQ.includes("when did") ||
-        aiQ.includes("when did it start") ||
+    // Onset patterns
+    if (aiQ.includes("when") ||
+        aiQ.includes("start") ||
         aiQ.includes("onset") ||
-        aiQ.includes("began")) {
+        aiQ.includes("began") ||
+        aiQ.includes("how long") ||
+        aiQ.includes("first notice")) {
       return "onset";
     }
 
-    if (aiQ.includes("scale of 1-10") ||
-        aiQ.includes("scale of 1 to 10") ||
-        aiQ.includes("how severe")) {
+    // Severity patterns
+    if (aiQ.includes("scale") ||
+        aiQ.includes("severe") ||
+        aiQ.includes("bad") ||
+        aiQ.includes("pain") ||
+        aiQ.includes("rate") ||
+        aiQ.includes("intensity") ||
+        aiQ.includes("how much")) {
       return "severity";
     }
 
-    if (aiQ.includes("medical history") ||
-        aiQ.includes("previous condition") ||
-        aiQ.includes("any health issues") ||
-        aiQ.includes("diagnosed with")) {
+    // Medical history patterns
+    if (aiQ.includes("history") ||
+        aiQ.includes("condition") ||
+        aiQ.includes("health") ||
+        aiQ.includes("diagnosed") ||
+        aiQ.includes("previous") ||
+        aiQ.includes("ever had") ||
+        aiQ.includes("existing") ||
+        aiQ.includes("chronic")) {
       return "medicalHistory";
     }
 
+    // Medication patterns
     if (aiQ.includes("medication") ||
         aiQ.includes("medicine") ||
         aiQ.includes("prescri") ||
         aiQ.includes("taking") ||
-        aiQ.includes("are you on any meds")) {
+        aiQ.includes("meds") ||
+        aiQ.includes("treatment") ||
+        aiQ.includes("using") ||
+        aiQ.includes("ibuprofen") ||    // Common medication mentions
+        aiQ.includes("drug")) {
       return "meds";
     }
 
+    // Also check if it's a follow-up question about any of these topics
+    if (aiQ.includes("anything else") || 
+        aiQ.includes("tell me more") ||
+        aiQ.includes("other") ||
+        aiQ.includes("additional")) {
+        // Look at previous messages to determine context
+        return getPreviousTriageContext();
+    }
+
     return null;
+  }
+
+  // Helper to determine context from previous messages
+  function getPreviousTriageContext() {
+    // If it's a follow-up, return the same field as the last triage question
+    // This maintains context when the AI asks for more details
+    const lastAiQuestion = getLastAssistantQuestion(messages);
+    const lastAskedField = determineWhichFieldIsAsked(lastAiQuestion);
+    return lastAskedField || null;
   }
 
   /**
@@ -192,8 +226,23 @@ export default function MultiTurnChat() {
 
     let newTriage = { ...triageState };
 
-    if (targetField && !newTriage[targetField]) {
-      newTriage[targetField] = input;
+    if (targetField) {
+      const negativeResponses = ['no', 'nope', 'none', 'nah', 'not really'];
+      const lc = input.toLowerCase().trim();
+      
+      if (negativeResponses.includes(lc)) {
+        if (newTriage[targetField]) {
+          newTriage[targetField] = `${newTriage[targetField]}; no additional info`;
+        } else {
+          newTriage[targetField] = 'none';
+        }
+      } else {
+        if (newTriage[targetField]) {
+          newTriage[targetField] = `${newTriage[targetField]}; ${input}`;
+        } else {
+          newTriage[targetField] = input;
+        }
+      }
     }
 
     const lc = input.toLowerCase();
@@ -373,17 +422,26 @@ export default function MultiTurnChat() {
   }
 
   // Plan button logic -- "Option B": no partial plan, just a "need more info" prompt
-  const handlePlanClick = () => {
+  const handlePlanClick = async () => {
+    console.log("[DEBUG] Plan Click - Triage State:", triageState);
+    console.log("[DEBUG] Plan Click - Messages:", messages);
+
     if (!enoughTriage) {
-      const insufficientMsg =
-        "I still need more info about your onset, severity, medical history, or medications. Could you share that?";
-      const updated = [...messages, { role: "user", content: insufficientMsg }];
-      setMessages(updated);
-      sendMessageWithContent(insufficientMsg);
-    } else {
-      // We have enough data => proceed to PlanPage
-      window.location.href = "/PlanPage";
+      console.log("[DEBUG] Not enough triage info");
+      const insufficientMsg = "I still need more info about your onset, severity, medical history, or medications. Could you share that?";
+      setMessages(prev => [...prev, { role: "assistant", content: insufficientMsg }]);
+      return;
     }
+
+    const planContext = {
+      triageState,
+      conversationHistory: messages,
+      symptoms: messages[1]?.content || "",
+    };
+    
+    console.log("[DEBUG] Storing plan context:", planContext);
+    localStorage.setItem('planContext', JSON.stringify(planContext));
+    window.location.href = "/PlanPage";
   };
 
   // Press ENTER => send message
