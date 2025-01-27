@@ -575,9 +575,9 @@ export default function MultiTurnChat() {
           display: "flex",
           flexDirection: "column",
           paddingTop: "60px",
-          paddingBottom: "20px", // Small padding at bottom
+          paddingBottom: "60px",
           marginBottom: `${inputAreaHeight}px`,
-          scrollBehavior: "smooth", // Ensure all scrolling is smooth
+          scrollBehavior: "smooth",
         }}
       >
         <div style={{
@@ -585,7 +585,7 @@ export default function MultiTurnChat() {
           minHeight: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "flex-end", // Ensures messages start from bottom when few messages
+          justifyContent: "flex-end",
         }}>
           {messages.map((msg, idx) => renderMessage(msg, idx))}
         </div>
