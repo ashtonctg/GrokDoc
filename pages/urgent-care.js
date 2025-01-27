@@ -52,10 +52,29 @@ export default function UrgentCarePage() {
         <div style={{ 
           flex: 1, 
           display: 'flex', 
+          flexDirection: 'column',
           alignItems: 'center', 
-          justifyContent: 'center'
+          justifyContent: 'center',
+          gap: '1rem'
         }}>
-          Loading nearby facilities...
+          <h2 style={{
+            fontFamily: "countach, sans-serif",
+            fontSize: "1.8rem",
+            margin: 0,
+            color: "#fff"
+          }}>
+            Finding Nearby Facilities
+          </h2>
+          <div style={{
+            fontSize: "2.5rem",
+            color: "#fff",
+            animation: "pulse 1.5s ease-in-out infinite",
+            letterSpacing: "0.5rem",
+            marginTop: "0.5rem",
+            paddingLeft: "0.5rem"
+          }}>
+            • • •
+          </div>
         </div>
       ) : error ? (
         <div style={{ 
@@ -68,33 +87,12 @@ export default function UrgentCarePage() {
           {error}
         </div>
       ) : (
-        <div style={{ 
-          flex: 1, 
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative'
-        }}>
+        <div style={{ flex: 1, position: 'relative' }}>
           <MapView 
             facilities={facilities} 
             userLocation={userLocation}
-            style={{ flex: 1 }}
+            style={{ height: '100%' }}
           />
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            maxHeight: '30vh',
-            backgroundColor: 'rgba(26, 26, 26, 0.95)',
-            borderTop: '1px solid #333',
-            overflow: 'auto',
-            padding: '1rem'
-          }}>
-            <FacilityList 
-              facilities={facilities} 
-              userLocation={userLocation}
-            />
-          </div>
         </div>
       )}
     </div>
