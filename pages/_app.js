@@ -11,12 +11,23 @@ function MyApp({ Component, pageProps }) {
           rel="stylesheet"
         />
 
-        <link rel="icon" href="/xai_white.png" type="image/png" />
+        <link
+          rel="icon"
+          media="(prefers-color-scheme: light)"
+          href="/xai.png"
+          type="image/png"
+        />
+        <link
+          rel="icon"
+          media="(prefers-color-scheme: dark)"
+          href="/xai_white.png"
+          type="image/png"
+        />
         
         <title>GrokDoc</title>
         <meta
           name="description"
-          content="GrokDoc: Your AI-powered doctor for symptom analysis, treatment plans, and health insights."
+          content="Your AI Doctor powered by Grok"
         />
       </Head>
 
