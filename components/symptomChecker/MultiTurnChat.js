@@ -321,18 +321,63 @@ export default function MultiTurnChat() {
   const handleImageFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const base64Str = await fileToBase64(file);
-    const userMsgContent = [
-      { type: "text", text: "Here's an image I'd like to show." },
-      {
-        type: "image_url",
-        image_url: {
-          url: `data:${file.type};base64,${base64Str}`,
-          detail: "low",
-        },
-      },
-    ];
-    sendMessageWithContent(userMsgContent);
+    
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      // Create an image element
+      const img = document.createElement('img');
+      img.onload = () => {
+        // Create canvas for compression
+        const canvas = document.createElement('canvas');
+        
+        // Set max dimensions
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        
+        let width = img.width;
+        let height = img.height;
+        
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        
+        // Set canvas dimensions
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress image
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Get compressed base64
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6); // Compression quality 0.6
+        
+        console.log("[DEBUG] Compressed image size:", compressedBase64.length);
+        
+        const userMsgContent = [
+          { type: "text", text: "Here's an image I'd like to show." },
+          {
+            type: "image_url",
+            image_url: {
+              url: compressedBase64
+            }
+          }
+        ];
+        
+        sendMessageWithContent(userMsgContent);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleLabsFileChange = async (e) => {
@@ -380,9 +425,11 @@ export default function MultiTurnChat() {
   // Main function to handle sending user content to the AI
   const sendMessageWithContent = async (userMsgContent) => {
     setLoading(true);
+    console.log("[DEBUG] sendMessageWithContent received:", JSON.stringify(userMsgContent, null, 2));
 
     // Add the user's message to the conversation
     const updated = [...messages, { role: "user", content: userMsgContent }];
+    console.log("[DEBUG] Updated messages array:", JSON.stringify(updated, null, 2));
     setMessages(updated);
 
     // Combine text so we can parse it
@@ -638,25 +685,20 @@ export default function MultiTurnChat() {
             <div style={{ marginRight: "0.5rem" }}>
               <div
                 style={{
-                  width: "36px",
-                  height: "36px",
+                  width: "42px",
+                  height: "42px",
                   borderRadius: "50%",
                   backgroundColor: "#666",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  overflow: "hidden"
+                  color: "#fff",
+                  fontSize: "20px",
+                  fontWeight: "500",
+                  fontFamily: "countach, sans-serif"
                 }}
               >
-                <Image
-                  src="/GregAvatar.png"
-                  alt="User"
-                  width={36}
-                  height={36}
-                  style={{
-                    objectFit: "cover"
-                  }}
-                />
+                ME
               </div>
             </div>
           )}
