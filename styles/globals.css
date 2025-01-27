@@ -148,3 +148,23 @@ body {
   background-color: #12a06a;
   transform: scale(1.05);
 }
+
+/* Smooth transitions for layout changes or hover effects */
+.dayCardsContainer {
+  transition: all 0.3s ease;
+}
+
+/* Subtle hover effect on day cards */
+.dayCardsContainer > div:hover {
+  transform: translateY(-2px);
+}
+
+/* Custom checkbox color */
+input[type="checkbox"] {
+  accent-color: #0d8157;
+}
+
+/* Animation for checked tasks */
+.dim-on-check {
+  transition: opacity 0.3s, color 0.3s;
+} 
