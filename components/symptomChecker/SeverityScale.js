@@ -1,16 +1,16 @@
 import { useState } from "react";
 
 const SEVERITY_COLORS = [
-  "#00b300", // 1 - Bright green
+  "#00b300",
   "#4cc200",
   "#86cc00",
   "#c2d100",
-  "#d4b100", // 5 - Yellow
+  "#d4b100",
   "#d48600",
   "#d15c00",
   "#cc3300",
   "#c20000",
-  "#b30000"  // 10 - Deep red
+  "#b30000"
 ];
 
 function SeverityBox({ number, color, selected, onSelect }) {

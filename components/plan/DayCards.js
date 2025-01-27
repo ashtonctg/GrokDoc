@@ -1,8 +1,7 @@
-// components/plan/DayCards.jsx
 import React from "react";
 
 export default function DayCards({ tasks = [], onToggleTask, currentDay = 0 }) {
-  // Build day->tasks map
+
   const dayTasksMap = {};
   for (let i = 0; i < 7; i++) {
     dayTasksMap[i] = [];

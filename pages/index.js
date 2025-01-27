@@ -1,4 +1,3 @@
-// pages/index.js
 import Header from "../components/common/Header";
 import Link from "next/link";
 
@@ -12,7 +11,6 @@ export default function Home() {
           GrokDoc is your AI‐powered doctor, ready to analyze symptoms and provide personalized care.
         </p>
 
-        {/* Single card container */}
         <div className="card-container" style={{ justifyContent: "center" }}>
           <Link href="/symptom-checker" legacyBehavior>
             <a className="home-card">

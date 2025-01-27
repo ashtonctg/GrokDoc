@@ -1,4 +1,3 @@
-// pages/api/treatmentPlans.js
 import { queryO1Preview } from "../../lib/aimodels";
 import { treatmentPlanPrompt } from "../../lib/prompts";
 

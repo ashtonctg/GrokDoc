@@ -1,10 +1,9 @@
-// components/symptomChecker/MultiTurnChat.js
-
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import SeverityScale from "./SeverityScale";
 
+// Constants
 const TEN_TRIAGE_FIELDS = [
   "onset", 
   "severity", 
@@ -19,31 +18,15 @@ const TEN_TRIAGE_FIELDS = [
 ];
 
 export default function MultiTurnChat() {
-  // The conversation messages
+  // State Management
   const [messages, setMessages] = useState([
     {
       role: "assistant",
       content: "Hey, I'm GrokDoc, your AI doctor. What are your symptoms?",
     },
   ]);
-
-  const chatContainerRef = useRef(null);
-
-  // Scroll to bottom on new messages
-  const scrollToBottom = useCallback(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
   const [userInput, setUserInput] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // Triage tracking
   const [triageState, setTriageState] = useState({
     onset: null,
     severity: null,
@@ -57,13 +40,26 @@ export default function MultiTurnChat() {
     impactDaily: null,
   });
 
-  const answeredCount = Object.values(triageState).filter(Boolean).length;
-  const enoughTriage = answeredCount >= 6;
-
-  // Hidden file inputs for image, labs, and emr
+  // Refs
+  const chatContainerRef = useRef(null);
   const imageInputRef = useRef(null);
   const labsInputRef = useRef(null);
   const emrInputRef = useRef(null);
+
+  // Derived State
+  const answeredCount = Object.values(triageState).filter(Boolean).length;
+  const enoughTriage = answeredCount >= 6;
+
+  // Scroll to bottom on new messages
+  const scrollToBottom = useCallback(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   // Insert "thinking..." bubble
   const addThinkingBubble = (updatedMsgs) => {
@@ -577,7 +573,6 @@ export default function MultiTurnChat() {
               />
             </div>
 
-            {/* Send button */}
             <button
               className="button"
               onClick={sendMessage}
