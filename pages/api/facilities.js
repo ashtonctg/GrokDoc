@@ -1,5 +1,8 @@
 import { findNearbyFacilities } from '../../lib/maps';
 
+// For server-side API calls
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;  // Note: no NEXT_PUBLIC_ prefix
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
