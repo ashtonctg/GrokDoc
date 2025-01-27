@@ -21,7 +21,7 @@ export default function UrgentCarePage() {
     setError(null);
     try {
       const res = await fetch(
-        `/api/facilities?lat=${userLocation.lat}&lng=${userLocation.lng}`
+        `/api/facilities?lat=${userLocation.lat}&lng=${userLocation.lng}&accuracy=${userLocation.accuracy}`
       );
       if (!res.ok) throw new Error('Failed to fetch facilities');
       const data = await res.json();
