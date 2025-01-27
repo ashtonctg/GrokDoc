@@ -1,17 +1,32 @@
 # GrokDoc - Your AI Doctor
 
-GrokDoc is an innovative AI-powered healthcare assistant built with Next.js. It leverages advanced language models to provide intelligent symptom analysis, personalized treatment recommendations, and ongoing health insights.
+GrokDoc is an AI-powered healthcare assistant that combines conversational intelligence with personalized treatment planning. Built with Next.js and powered by Grok-2.
 
 ## Quick Start
-1. Run `npm install` to install dependencies
-2. Create `.env.local` and add your OpenAI API key:   ```
-   OPENAI_API_KEY=your_key_here   ```
-3. Run `npm run dev` to start development server at http://localhost:3005
+1. `npm install`
+2. Create `.env.local`:
+   ```
+   OPENAI_API_KEY=your_key_here
+   XAI_API_KEY=your_key_here
+   ```
+3. Run `npm run dev` (runs on http://localhost:33006)
 
 ## Core Features
-- **Symptom Checker**: AI-powered symptom analysis and initial diagnosis
-- **Treatment Plans**: Personalized treatment recommendations
-- **Health Insights**: Ongoing health monitoring and early warnings
+
+### 1. Intelligent Symptom Analysis
+- Natural conversation with medical context awareness
+- Structured triage questions while maintaining free-form chat
+- Support for medical document analysis:
+  - Image uploads (symptoms, conditions)
+  - Lab results
+  - Medical records
+- Powered by Grok-2 for medical reasoning
+
+### 2. Dynamic Treatment Planning
+- Generates personalized 7-day treatment plans
+- Interactive task tracking with progress bar
+- In-plan chat functionality for updates and questions
+- Adapts recommendations based on user feedback
 
 ## Project Structure
 - **components/**: UI components organized by feature
@@ -24,7 +39,7 @@ GrokDoc is an innovative AI-powered healthcare assistant built with Next.js. It 
 - **styles/**: Global styling
 
 ## Tech Stack
-- Next.js 13+
-- React 19
-- Tailwind CSS
-- OpenAI API
+- Next.js
+- React
+- X.AI API (Grok-2)
+- OpenAI API (Reasoning)
