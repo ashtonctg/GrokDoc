@@ -1,9 +1,7 @@
-// components/symptomChecker/MultiTurnChat.js
-
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import SeverityScale from "./SeverityScale";
+import TriageProgress from "./TriageProgress";
 
 /** Triage fields we track */
 const TEN_TRIAGE_FIELDS = [
@@ -267,7 +265,7 @@ export default function MultiTurnChat() {
   // The plan button logic
   const handlePlanClick = () => {
     if (!enoughTriage) {
-      const userMsgContent = "I want to generate a plan now.";
+      const userMsgContent = "Generate a plan for me.";
       const updated = [...messages, { role: "user", content: userMsgContent }];
       setMessages(updated);
 
@@ -547,28 +545,48 @@ export default function MultiTurnChat() {
             gap: "0.75rem",
           }}
         >
-          {/* The always-visible Plan Button, which is disabled if not enough triage */}
-          <button
-            className="button"
-            onClick={handlePlanClick}
-            style={{
-              backgroundColor: enoughTriage ? "#0d8157" : "#666",
-              cursor: enoughTriage ? "pointer" : "not-allowed",
-              textDecoration: "none",
-              padding: "6px 12px",
-              fontSize: "14px",
-              borderRadius: "4px",
-              border: "none",
-              color: "#fff",
-            }}
-          >
-            Generate Plan
-          </button>
+          {/* The Plan Button + Progress section */}
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.2rem"
+          }}>
+            <button
+              className="button generate-plan-button"
+              onClick={handlePlanClick}
+              style={{
+                backgroundColor: enoughTriage ? "#0d8157" : "#666",
+                cursor: enoughTriage ? "pointer" : "not-allowed",
+                textDecoration: "none",
+                padding: "0.6rem 1.2rem",
+                fontSize: "1.1rem",
+                borderRadius: "4px",
+                border: "none",
+                color: "#fff",
+                width: "140px"
+              }}
+            >
+              Generate Plan
+            </button>
+            
+            <TriageProgress completedFields={answeredCount} />
+            
+            {!enoughTriage && (
+              <div style={{
+                fontSize: "0.8rem",
+                color: "#666",
+                marginTop: "-0.2rem"
+              }}>
+                {4 - answeredCount} more questions
+              </div>
+            )}
+          </div>
 
           {/* Chat input box */}
           <div style={{ position: "relative", width: "100%" }}>
             <textarea
-              rows={4}
+              rows={3}
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -578,7 +596,7 @@ export default function MultiTurnChat() {
                 color: "#fff",
                 border: "1px solid #444",
                 borderRadius: "8px",
-                padding: "12px 80px 40px 12px",
+                padding: "10px 80px 35px 12px",
                 resize: "none",
                 fontSize: "16px",
                 lineHeight: "1.5",

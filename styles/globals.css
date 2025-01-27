@@ -124,6 +124,11 @@ body {
   margin-top: 0.75rem;
 }
 
+.generate-plan-button {
+  font-size: 1.4rem;
+  padding: 0.9rem 1.8rem;
+}
+
 .button:hover {
   background-color: #12a06a;
   transform: scale(1.05);
