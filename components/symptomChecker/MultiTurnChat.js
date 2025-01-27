@@ -63,6 +63,12 @@ export default function MultiTurnChat() {
   // Add new state for urgent care detection
   const [urgentCareNeeded, setUrgentCareNeeded] = useState(false);
 
+  // Add state for urgent care UI
+  const [showUrgentCareButton, setShowUrgentCareButton] = useState(false);
+
+  // Add state for showing urgent care response buttons
+  const [showUrgentCareButtons, setShowUrgentCareButtons] = useState(false);
+
   // Refs for scrolling and file inputs
   const chatContainerRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -133,13 +139,15 @@ export default function MultiTurnChat() {
     for (let i = msgArray.length - 1; i >= 0; i--) {
       if (msgArray[i].role === "assistant") {
         const content = msgArray[i].content;
+        // Handle array content more safely
         if (Array.isArray(content)) {
           return content
-            .filter(chunk => chunk.type === 'text')
-            .map(chunk => chunk.text)
+            .filter(chunk => chunk && chunk.type === 'text')
+            .map(chunk => chunk.text || '')
             .join(' ');
         }
-        return content || "";
+        // Handle string content
+        return typeof content === 'string' ? content : '';
       }
     }
     return "";
@@ -257,11 +265,12 @@ export default function MultiTurnChat() {
       }
     }
 
-    // Check for urgent symptoms in the input
+    // Check for urgent symptoms and show buttons
     const urgentPatterns = [
       /chest pain/i,
       /difficulty breathing/i,
       /severe (pain|headache|bleeding)/i,
+      /head injury/i,
       /emergency/i,
       /unbearable/i,
       /passed out/i,
@@ -269,8 +278,18 @@ export default function MultiTurnChat() {
     ];
 
     if (urgentPatterns.some(pattern => pattern.test(input)) || 
-        (newTriage.severity && newTriage.severity >= 8)) {
+        (newTriage.severity && newTriage.severity >= 7)) {
       setUrgentCareNeeded(true);
+      setShowUrgentCareButtons(true);
+    }
+
+    // Reset buttons if user responds
+    if (lastAiQuestion.includes("find nearby urgent care")) {
+      const agreePatterns = [/yes/i, /sure/i, /okay/i, /find/i, /show/i, /where/i];
+      if (agreePatterns.some(pattern => pattern.test(input))) {
+        handleUrgentCareRedirect();
+      }
+      setShowUrgentCareButtons(false);
     }
 
     setTriageState(newTriage);
@@ -478,9 +497,23 @@ export default function MultiTurnChat() {
     sendMessageWithContent(severityMsg);
   };
 
-  // Add urgent care navigation
-  const handleUrgentCareClick = () => {
+  // Handle urgent care navigation with context preservation
+  const handleUrgentCareRedirect = () => {
+    // Store conversation context
+    localStorage.setItem('chatContext', JSON.stringify({
+      messages,
+      triageState,
+      returnPath: '/symptom-checker'
+    }));
+    
     window.location.href = "/urgent-care";
+  };
+
+  // Handle "No" response
+  const handleDeclineUrgentCare = () => {
+    setUserInput("No, I don't need urgent care right now");
+    sendMessage();
+    setShowUrgentCareButtons(false);
   };
 
   // Render each message bubble
@@ -612,13 +645,18 @@ export default function MultiTurnChat() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#fff",
-                  fontFamily: "countach, sans-serif",
-                  fontSize: "20px",
-                  fontWeight: "bold",
+                  overflow: "hidden"
                 }}
               >
-                ME
+                <Image
+                  src="/GregAvatar.png"
+                  alt="User"
+                  width={36}
+                  height={36}
+                  style={{
+                    objectFit: "cover"
+                  }}
+                />
               </div>
             </div>
           )}
@@ -729,29 +767,63 @@ export default function MultiTurnChat() {
           </div>
         )}
 
-        {/* Add urgent care recommendation */}
-        {isAi && urgentCareNeeded && index === messages.length - 1 && (
+        {/* Add urgent care buttons - Updated condition */}
+        {isAi && 
+         showUrgentCareButtons && 
+         (msg.content.includes("Would you like me to help you find nearby urgent care") ||
+          msg.content.includes("find nearby urgent care centers")) && (
           <div style={{
-            marginTop: "1rem",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "0.5rem"
+            display: 'flex',
+            gap: '1rem',
+            marginTop: '1rem'
           }}>
-            <div style={{ color: "#ff4444", fontSize: "0.9rem" }}>
-              Based on your symptoms, you may need urgent medical attention
-            </div>
             <button
-              className="button"
-              onClick={handleUrgentCareClick}
+              onClick={handleUrgentCareRedirect}
               style={{
-                backgroundColor: "#ff4444",
-                padding: "0.8rem 1.2rem",
-                fontSize: "1.1rem",
-                fontFamily: "countach, sans-serif",
+                backgroundColor: '#2a2a2a',
+                color: '#fff',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                border: '1px solid #333',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '0.9rem',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#3a3a3a';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#2a2a2a';
+                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              Find Urgent Care
+              Yes, find urgent care
+            </button>
+            <button
+              onClick={handleDeclineUrgentCare}
+              style={{
+                backgroundColor: '#2a2a2a',
+                color: '#fff',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                border: '1px solid #333',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '0.9rem',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#3a3a3a';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#2a2a2a';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              No, continue chat
             </button>
           </div>
         )}
