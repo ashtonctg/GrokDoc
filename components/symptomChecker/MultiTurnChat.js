@@ -60,6 +60,9 @@ export default function MultiTurnChat() {
   // For offering diagnosis once we hit 4 critical fields
   const [diagnosisOffered, setDiagnosisOffered] = useState(false);
 
+  // Add new state for urgent care detection
+  const [urgentCareNeeded, setUrgentCareNeeded] = useState(false);
+
   // Refs for scrolling and file inputs
   const chatContainerRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -252,6 +255,22 @@ export default function MultiTurnChat() {
       if (sevVal >= 1 && sevVal <= 10) {
         newTriage.severity = sevVal;
       }
+    }
+
+    // Check for urgent symptoms in the input
+    const urgentPatterns = [
+      /chest pain/i,
+      /difficulty breathing/i,
+      /severe (pain|headache|bleeding)/i,
+      /emergency/i,
+      /unbearable/i,
+      /passed out/i,
+      /unconscious/i,
+    ];
+
+    if (urgentPatterns.some(pattern => pattern.test(input)) || 
+        (newTriage.severity && newTriage.severity >= 8)) {
+      setUrgentCareNeeded(true);
     }
 
     setTriageState(newTriage);
@@ -457,6 +476,11 @@ export default function MultiTurnChat() {
     setTriageState((prev) => ({ ...prev, severity: value }));
     const severityMsg = `My severity level is ${value}/10.`;
     sendMessageWithContent(severityMsg);
+  };
+
+  // Add urgent care navigation
+  const handleUrgentCareClick = () => {
+    window.location.href = "/urgent-care";
   };
 
   // Render each message bubble
@@ -704,6 +728,33 @@ export default function MultiTurnChat() {
             </div>
           </div>
         )}
+
+        {/* Add urgent care recommendation */}
+        {isAi && urgentCareNeeded && index === messages.length - 1 && (
+          <div style={{
+            marginTop: "1rem",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.5rem"
+          }}>
+            <div style={{ color: "#ff4444", fontSize: "0.9rem" }}>
+              Based on your symptoms, you may need urgent medical attention
+            </div>
+            <button
+              className="button"
+              onClick={handleUrgentCareClick}
+              style={{
+                backgroundColor: "#ff4444",
+                padding: "0.8rem 1.2rem",
+                fontSize: "1.1rem",
+                fontFamily: "countach, sans-serif",
+              }}
+            >
+              Find Urgent Care
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -832,6 +883,19 @@ export default function MultiTurnChat() {
                 {4 - criticalCount} more questions
               </div>
             )}
+
+            <button
+              className="button"
+              onClick={() => window.location.href = "/urgent-care"}
+              style={{
+                backgroundColor: "#666",
+                fontSize: "0.9rem",
+                padding: "0.4rem 0.8rem",
+                marginTop: "0.5rem"
+              }}
+            >
+              Debug: Test Urgent Care
+            </button>
           </div>
 
           {/* Chat input box */}
