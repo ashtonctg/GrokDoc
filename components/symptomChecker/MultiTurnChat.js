@@ -1,15 +1,17 @@
+// components/symptomChecker/MultiTurnChat.js
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import SeverityScale from "./SeverityScale";
 
-// Constants
+/** Triage fields we track */
 const TEN_TRIAGE_FIELDS = [
-  "onset", 
-  "severity", 
-  "associatedSymptoms", 
-  "medicalHistory", 
-  "familyHistory", 
+  "onset",
+  "severity",
+  "associatedSymptoms",
+  "medicalHistory",
+  "familyHistory",
   "meds",
   "allergies",
   "lifestyle",
@@ -18,15 +20,19 @@ const TEN_TRIAGE_FIELDS = [
 ];
 
 export default function MultiTurnChat() {
-  // State Management
+  // The conversation messages
   const [messages, setMessages] = useState([
     {
       role: "assistant",
       content: "Hey, I'm GrokDoc, your AI doctor. What are your symptoms?",
     },
   ]);
+
+  // UI state
   const [userInput, setUserInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Triage tracking
   const [triageState, setTriageState] = useState({
     onset: null,
     severity: null,
@@ -40,15 +46,19 @@ export default function MultiTurnChat() {
     impactDaily: null,
   });
 
+  // For plan generation
+  const answeredCount = Object.values(triageState).filter(Boolean).length;
+  const enoughTriage = answeredCount >= 4; // lowered from 6 to 4
+
+  // For one-time animations
+  const [didAnimateSeverity, setDidAnimateSeverity] = useState(false);
+  const [didAnimateLabsEmr, setDidAnimateLabsEmr] = useState(false);
+
   // Refs
   const chatContainerRef = useRef(null);
   const imageInputRef = useRef(null);
   const labsInputRef = useRef(null);
   const emrInputRef = useRef(null);
-
-  // Derived State
-  const answeredCount = Object.values(triageState).filter(Boolean).length;
-  const enoughTriage = answeredCount >= 6;
 
   // Scroll to bottom on new messages
   const scrollToBottom = useCallback(() => {
@@ -74,6 +84,19 @@ export default function MultiTurnChat() {
       return copy;
     });
   };
+
+  // Minimal triage parse
+  function parseTriageAnswers(input) {
+    const lc = (input || "").toLowerCase();
+    let newTriage = { ...triageState };
+
+    // Example: if user says "Started 2 days ago"
+    if (lc.includes("day") && !newTriage.onset) {
+      newTriage.onset = "some day info";
+    }
+    // Implement your parse logic, similarly for severity, etc.
+    setTriageState(newTriage);
+  }
 
   // Voice placeholder
   const handleVoiceClick = () => alert("Voice integration placeholder.");
@@ -101,16 +124,12 @@ export default function MultiTurnChat() {
   const handleImageFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const base64Str = await fileToBase64(file);
     const userMsgContent = [
       { type: "text", text: "Here's an image I'd like to show." },
       {
         type: "image_url",
-        image_url: {
-          url: `data:${file.type};base64,${base64Str}`,
-          detail: "low",
-        },
+        image_url: { url: `data:${file.type};base64,${base64Str}`, detail: "low" },
       },
     ];
     sendMessageWithContent(userMsgContent);
@@ -120,16 +139,12 @@ export default function MultiTurnChat() {
   const handleLabsFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const base64Str = await fileToBase64(file);
     const userMsgContent = [
       { type: "text", text: "Here are my labs." },
       {
         type: "image_url",
-        image_url: {
-          url: `data:${file.type};base64,${base64Str}`,
-          detail: "doc-labs",
-        },
+        image_url: { url: `data:${file.type};base64,${base64Str}`, detail: "doc-labs" },
       },
     ];
     sendMessageWithContent(userMsgContent);
@@ -139,28 +154,23 @@ export default function MultiTurnChat() {
   const handleEmrFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const base64Str = await fileToBase64(file);
     const userMsgContent = [
       { type: "text", text: "Here's my EMR doc." },
       {
         type: "image_url",
-        image_url: {
-          url: `data:${file.type};base64,${base64Str}`,
-          detail: "doc-emr",
-        },
+        image_url: { url: `data:${file.type};base64,${base64Str}`, detail: "doc-emr" },
       },
     ];
     sendMessageWithContent(userMsgContent);
   };
 
-  // Convert file -> base64
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const dataUrl = reader.result; 
-        const base64Part = dataUrl.split("base64,")[1]; 
+        const dataUrl = reader.result;
+        const base64Part = dataUrl.split("base64,")[1];
         resolve(base64Part);
       };
       reader.onerror = (err) => reject(err);
@@ -183,11 +193,11 @@ export default function MultiTurnChat() {
     const updated = [...messages, { role: "user", content: userMsgContent }];
     setMessages(updated);
 
-    // Attempt triage parse if there's text
+    // Attempt triage parse
     if (Array.isArray(userMsgContent)) {
       const combinedText = userMsgContent
-        .filter(c => c.type === "text")
-        .map(c => c.text)
+        .filter((c) => c.type === "text")
+        .map((c) => c.text)
         .join(" ");
       parseTriageAnswers(combinedText);
     } else if (typeof userMsgContent === "string") {
@@ -207,7 +217,8 @@ export default function MultiTurnChat() {
       });
       const data = await res.json();
       if (data.diagnosis) {
-        updateBubbleContent(thinkingIndex, data.diagnosis);
+        const processed = processAiDiagnosis(data.diagnosis);
+        updateBubbleContent(thinkingIndex, processed);
       } else {
         updateBubbleContent(thinkingIndex, "Hmm, no response. Try again?");
       }
@@ -219,6 +230,32 @@ export default function MultiTurnChat() {
     setLoading(false);
   };
 
+  // This function checks if the AI's message includes "Possible Diagnoses"
+  // or "Confidence: XX%" lines, then appends a dynamic UI or clarifies it
+  function processAiDiagnosis(rawText) {
+    // For example, if rawText is "Possible Diagnoses: 1) Flu (70% confidence), 2) Cold (20%), 3) Unknown (10%). Confidence: 70% overall"
+    let finalText = rawText;
+
+    // Look for a "Confidence: XX%" pattern
+    const confMatch = rawText.match(/confidence:\s*(\d{1,3})\%/i);
+    if (confMatch) {
+      const confidenceValue = parseInt(confMatch[1], 10);
+      // We'll display a line of boxes. E.g. if 70% => that might be 7/10
+      const boxesFilled = Math.round((confidenceValue / 100) * 10);
+      // We'll produce something like: [Confidence Scale: X boxes]
+
+      // Create a custom bracket to show the boxes
+      let confidenceScale = "";
+      for (let i = 1; i <= 10; i++) {
+        confidenceScale += i <= boxesFilled ? "[■]" : "[ ]";
+      }
+      // We'll embed that after the text or at the end
+      finalText += `\n\nConfidence Scale:\n${confidenceScale}  (${confidenceValue}%)`;
+    }
+
+    return finalText;
+  }
+
   // Press ENTER
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -227,28 +264,24 @@ export default function MultiTurnChat() {
     }
   };
 
-  // Minimal triage parse
-  function parseTriageAnswers(input) {
-    const lc = (input || "").toLowerCase();
-    let newTriage = { ...triageState };
+  // The plan button logic
+  const handlePlanClick = () => {
+    if (!enoughTriage) {
+      const userMsgContent = "I want to generate a plan now.";
+      const updated = [...messages, { role: "user", content: userMsgContent }];
+      setMessages(updated);
 
-    // Example parse for onset, severity, ...
-    // (same logic as your code)
-    setTriageState(newTriage);
-  }
-
-  // Handle severity scale
-  const handleSeveritySelect = (value) => {
-    setTriageState((prev) => ({ ...prev, severity: value }));
-    const severityMsg = `My severity level is ${value}/10.`;
-    sendMessageWithContent(severityMsg);
+      // Instead of manually setting a response, let's send this to the AI
+      sendMessageWithContent(userMsgContent);
+    } else {
+      window.location.href = "/treatment-plans";
+    }
   };
 
-  // Renders each message
+  // Renders each message bubble
   const renderMessage = (msg, index) => {
     const isAi = msg.role === "assistant";
 
-    // content can be string or array
     let messageElements = null;
     if (Array.isArray(msg.content)) {
       messageElements = msg.content.map((chunk, i) => {
@@ -271,28 +304,28 @@ export default function MultiTurnChat() {
         }
       });
     } else {
-      // string
-      messageElements = msg.content;
+      messageElements = msg.content; // string
     }
 
     // Check if we should show severity scale
     const contentStr = typeof msg.content === "string" ? msg.content.toLowerCase() : "";
-    const shouldShowSeverity = isAi && 
-      !triageState.severity &&
-      (contentStr.includes("1-10") || contentStr.includes("1 to 10"));
+    const shouldShowSeverity = isAi && !triageState.severity && (contentStr.includes("1-10") || contentStr.includes("1 to 10"));
+    // Check if we should show labs/emr
+    const shouldShowLabsEmr = isAi && (contentStr.includes("medical record") || contentStr.includes("lab result") || contentStr.includes("test result") || contentStr.includes("health record") || contentStr.includes("upload") || contentStr.includes("do you have any"));
+    
+    // *** For one-time button animation
+    let severityScaleClass = "";
+    if (shouldShowSeverity && !didAnimateSeverity) {
+      severityScaleClass = "wiggle-once"; // We'll define CSS
+      // Mark that we've animated once
+      setDidAnimateSeverity(true);
+    }
 
-    // Update the check for showing labs/emr buttons to be more comprehensive
-    const shouldShowLabsEmr = isAi && (
-      contentStr.includes("medical record") ||
-      contentStr.includes("lab result") ||
-      contentStr.includes("test result") ||
-      contentStr.includes("health record") ||
-      contentStr.includes("previous records") ||
-      contentStr.includes("documentation") ||
-      contentStr.includes("upload") ||
-      contentStr.includes("share your") ||
-      contentStr.includes("do you have any")
-    );
+    let labsEmrClass = "";
+    if (shouldShowLabsEmr && !didAnimateLabsEmr) {
+      labsEmrClass = "wiggle-once";
+      setDidAnimateLabsEmr(true);
+    }
 
     return (
       <div key={index} style={{ display: "flex", flexDirection: "column", marginBottom: "1rem" }}>
@@ -363,7 +396,9 @@ export default function MultiTurnChat() {
         {/* Possibly show severity scale */}
         {shouldShowSeverity && (
           <div style={{ marginTop: "0.5rem", paddingLeft: "52px" }}>
-            <SeverityScale onSelectSeverity={handleSeveritySelect} />
+            <div className={severityScaleClass}>
+              <SeverityScale onSelectSeverity={handleSeveritySelect} />
+            </div>
           </div>
         )}
 
@@ -390,7 +425,7 @@ export default function MultiTurnChat() {
               justifyContent: "center"
             }}>
               <button
-                className="button"
+                className={labsEmrClass + " button"}
                 onClick={handleLabsClick}
                 style={{
                   backgroundColor: "#444",
@@ -410,7 +445,7 @@ export default function MultiTurnChat() {
                 LABS
               </button>
               <button
-                className="button"
+                className={labsEmrClass + " button"}
                 onClick={handleEmrClick}
                 style={{
                   backgroundColor: "#444",
@@ -436,17 +471,22 @@ export default function MultiTurnChat() {
     );
   };
 
+  // Handle severity scale
+  const handleSeveritySelect = (value) => {
+    setTriageState((prev) => ({ ...prev, severity: value }));
+    const severityMsg = `My severity level is ${value}/10.`;
+    sendMessageWithContent(severityMsg);
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "1rem",
-        width: "100%",
-        height: "100vh",
-        position: "relative",
-      }}
-    >
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "1rem",
+      width: "100%",
+      height: "100vh",
+      position: "relative",
+    }}>
       <div
         ref={chatContainerRef}
         style={{
@@ -485,6 +525,7 @@ export default function MultiTurnChat() {
         onChange={handleEmrFileChange}
       />
 
+      {/* Chat input area + Plan button */}
       <div
         style={{
           position: "fixed",
@@ -506,23 +547,25 @@ export default function MultiTurnChat() {
             gap: "0.75rem",
           }}
         >
-          {enoughTriage && (
-            <Link href="/treatment-plans" legacyBehavior>
-              <a
-                className="button"
-                style={{
-                  backgroundColor: "#0d8157",
-                  textDecoration: "none",
-                  padding: "6px 12px",
-                  fontSize: "14px",
-                  borderRadius: "4px",
-                }}
-              >
-                Generate Plan
-              </a>
-            </Link>
-          )}
+          {/* The always-visible Plan Button, which is disabled if not enough triage */}
+          <button
+            className="button"
+            onClick={handlePlanClick}
+            style={{
+              backgroundColor: enoughTriage ? "#0d8157" : "#666",
+              cursor: enoughTriage ? "pointer" : "not-allowed",
+              textDecoration: "none",
+              padding: "6px 12px",
+              fontSize: "14px",
+              borderRadius: "4px",
+              border: "none",
+              color: "#fff",
+            }}
+          >
+            Generate Plan
+          </button>
 
+          {/* Chat input box */}
           <div style={{ position: "relative", width: "100%" }}>
             <textarea
               rows={4}

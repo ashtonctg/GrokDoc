@@ -154,4 +154,18 @@ input[type="checkbox"] {
 
 .dim-on-check {
   transition: opacity 0.3s, color 0.3s;
+}
+
+@keyframes wiggle {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(-5deg); }
+  30% { transform: rotate(5deg); }
+  45% { transform: rotate(-5deg); }
+  60% { transform: rotate(5deg); }
+  75% { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.wiggle-once {
+  animation: wiggle 0.8s ease;
 } 
