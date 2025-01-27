@@ -1,7 +1,7 @@
 // pages/api/symptomChecker.js
 
 import { systemPrompt } from "../../lib/prompts";
-import { queryChatGpt4o, queryO1Preview } from "../../lib/aimodels";
+import { queryChatGpt4o, queryO1Preview, queryGrok2 } from "../../lib/aimodels";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -46,8 +46,8 @@ export default async function handler(req, res) {
       console.log("Using O1-preview for doc analysis");
       diagnosis = await queryO1Preview(finalMessages);
     } else {
-      console.log("Using chatgpt-4o-latest for normal conversation");
-      diagnosis = await queryChatGpt4o(finalMessages);
+      console.log("Using grok-2-latest for normal conversation");
+      diagnosis = await queryGrok2(finalMessages);
     }
 
     return res.status(200).json({ diagnosis });
