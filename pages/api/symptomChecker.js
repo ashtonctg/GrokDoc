@@ -13,7 +13,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid conversation array" });
     }
 
-    // Build the final messages
+    // Build final messages
     const finalMessages = [
       systemPrompt(),
       ...conversation.map((msg) => ({
@@ -24,13 +24,12 @@ export default async function handler(req, res) {
       })),
     ];
 
-    // Check if we should use O1 for advanced reasoning, specifically for diagnosis
+    // Decide if we should use O1 for advanced reasoning
     let useO1 = false;
     let lastUserText = "";
     const lastMessage = conversation[conversation.length - 1];
     if (lastMessage) {
       if (Array.isArray(lastMessage.content)) {
-        // Combine text chunks
         lastUserText = lastMessage.content
           .filter((c) => c.type === "text")
           .map((c) => c.text)
@@ -40,14 +39,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // 1) If the user or AI specifically says "diagnosis" or synonyms, we use O1
-    // 2) If the user has labs or EMR
-    // 3) If we do advanced triage
+    // If user or AI says "diagnosis" => advanced O1
     if (/\bdiagnos(e|is|es)\b/i.test(lastUserText)) {
       useO1 = true;
     }
 
-    // Also check if the last user message includes doc-labs or doc-emr
+    // Also use O1 if user attached labs or EMR
     if (conversation.length) {
       const lastMsg = conversation[conversation.length - 1];
       if (Array.isArray(lastMsg.content)) {
@@ -65,7 +62,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Now decide which model
+    // Query the appropriate model
     let diagnosis;
     if (useO1) {
       console.log("Using O1-preview for advanced reasoning (diagnosis/docs).");
@@ -75,7 +72,6 @@ export default async function handler(req, res) {
       diagnosis = await queryGrok2(finalMessages);
     }
 
-    // Return the AI's message
     return res.status(200).json({ diagnosis });
   } catch (error) {
     console.error("SymptomChecker Error:", error);

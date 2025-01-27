@@ -1,17 +1,20 @@
 import React from "react";
 
 export default function TriageProgress({ completedFields }) {
+  // We only care about 4 critical fields for plan readiness
   const totalFields = 4;
   const boxWidth = 30;
 
   return (
-    <div style={{ 
-      display: "flex", 
-      gap: "0.3rem",
-      justifyContent: "center",
-      margin: "0.2rem 0",
-      opacity: 0.8
-    }}>
+    <div
+      style={{
+        display: "flex",
+        gap: "0.3rem",
+        justifyContent: "center",
+        margin: "0.2rem 0",
+        opacity: 0.8,
+      }}
+    >
       {[...Array(totalFields)].map((_, index) => {
         const filled = index < completedFields;
         return (
@@ -29,4 +32,4 @@ export default function TriageProgress({ completedFields }) {
       })}
     </div>
   );
-} 
+}
